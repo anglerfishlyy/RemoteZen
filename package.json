@@ -1,0 +1,32 @@
+{
+  "name": "remotezen",
+  "version": "1.0.0",
+  "description": "RemoteZen helps remote teams stay focused and aligned with a simple dashboard for tasks and a built-in focus timer.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "nodemon backend/prisma/src/server.js",
+    "start": "node backend/prisma/src/server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/anglerfishlyy/RemoteZen.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/anglerfishlyy/RemoteZen/issues"
+  },
+  "homepage": "https://github.com/anglerfishlyy/RemoteZen#readme",
+  "dependencies": {
+    "@prisma/client": "^6.15.0",
+    "express": "^5.1.0",
+    "prisma": "^6.15.0"
+  },
+  
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
+}

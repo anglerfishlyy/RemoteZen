@@ -1,4 +1,4 @@
-# RemoteZen Backend (MVP)
+# RemoteZen (MVP)
 
 RemoteZen helps remote teams stay focused and aligned with a simple dashboard for tasks and a built-in focus timer.
 
