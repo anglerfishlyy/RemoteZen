@@ -1,9 +1,36 @@
+"use client"
+
+import { useRouter } from "next/navigation"
+import LandingPage from "../components/LandingPage"
+
 export default function Home() {
-  return (
-     <div className="flex h-screen items-center justify-center bg-gray-100">
-      <button className="px-6 py-2 rounded-lg bg-blue-500 text-white hover:bg-blue-600">
-        Tailwind Test Button
-      </button>
-    </div>
-  );
+  const router = useRouter()
+
+  const handleNavigate = (
+    page: 'landing' | 'auth' | 'dashboard' | 'tasks' | 'timer' | 'profile'
+  ) => {
+    switch (page) {
+      case 'dashboard':
+        router.push('/dashboard')
+        break
+      case 'profile':
+        router.push('/profile')
+        break
+      case 'tasks':
+        router.push('/tasks')
+        break
+      case 'timer':
+        router.push('/timer')
+        break
+      case 'auth':
+        router.push('/auth')
+        break
+      default:
+        router.push('/')
+        break
+    }
+  }
+
+  return <LandingPage onNavigate={handleNavigate} />
 }
+

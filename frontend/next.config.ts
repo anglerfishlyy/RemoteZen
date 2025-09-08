@@ -1,7 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  images: {
+    domains: ['images.unsplash.com'],
+  },
+  experimental: {},
+  // Add this line
+  transpilePackages: ["framer-motion"],
 };
 
 export default nextConfig;
