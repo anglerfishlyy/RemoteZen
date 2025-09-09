@@ -19,7 +19,7 @@ import {
   Play
 } from 'lucide-react'
 
-type NavigateFunction = (page: 'landing' | 'auth' | 'dashboard' | 'tasks' | 'timer' | 'profile') => void;
+type NavigateFunction = (page: 'landing' | 'login' | 'dashboard' | 'tasks' | 'timer' | 'profile') => void;
 
 interface LandingPageProps {
   onNavigate: NavigateFunction;
@@ -158,13 +158,13 @@ export default function LandingPage({ onNavigate }: LandingPageProps) {
               <Button 
                 variant="ghost" 
                 className="text-white hover:bg-white/10"
-                onClick={() => onNavigate('auth')}
+                onClick={() => onNavigate('login')}
               >
                 Sign In
               </Button>
               <Button 
                 className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white border-0"
-                onClick={() => onNavigate('auth')}
+                onClick={() => onNavigate('login')}
               >
                 Get Started
               </Button>
@@ -211,7 +211,7 @@ export default function LandingPage({ onNavigate }: LandingPageProps) {
               <Button 
                 size="lg" 
                 className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white border-0 px-8 py-3 text-lg group relative z-10"
-                onClick={() => onNavigate('auth')}
+                onClick={() => onNavigate('login')}
               >
                 Get Started Free
                 <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
@@ -348,7 +348,7 @@ export default function LandingPage({ onNavigate }: LandingPageProps) {
                     </ul>
                     <Button 
                       className={`w-full ${plan.popular ? 'bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white border-0' : 'bg-white/10 hover:bg-white/20 text-white border-white/20'}`}
-                      onClick={() => onNavigate('auth')}
+                      onClick={() => onNavigate('login')}
                     >
                       {plan.name === 'Enterprise' ? 'Contact Sales' : 'Get Started'}
                     </Button>

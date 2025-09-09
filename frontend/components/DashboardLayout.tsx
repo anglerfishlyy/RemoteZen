@@ -1,6 +1,8 @@
 import React from 'react'
 import Header from './Header'
 import Sidebar from './Sidebar'
+import { Providers } from '@/app/providers';
+import { AuthGuard } from './AuthGuard';
 
 type NavigateFunction = (page: 'landing' | 'auth' | 'dashboard' | 'tasks' | 'timer' | 'profile') => void;
 
@@ -13,6 +15,8 @@ interface DashboardLayoutProps {
 
 export default function DashboardLayout({ children, currentPage, onNavigate, onLogout }: DashboardLayoutProps) {
   return (
+    <AuthGuard>
+    <Providers>
     <div className="min-h-screen bg-gradient-to-br from-[#0B0F17] via-[#0F1419] to-[#0B0F17]">
       <Header currentPage={currentPage} onNavigate={onNavigate} onLogout={onLogout} />
       <div className="flex">
@@ -22,5 +26,7 @@ export default function DashboardLayout({ children, currentPage, onNavigate, onL
         </main>
       </div>
     </div>
+    </Providers>
+    </AuthGuard>
   )
 }

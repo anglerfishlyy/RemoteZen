@@ -1,11 +1,23 @@
-"use client"
+'use client'
 
 import Dashboard from '../../../components/Dashboard'
+import { useAuth } from '../../providers'
+import { useRouter } from 'next/navigation'
 
 export default function DashboardPage() {
-  return <Dashboard onNavigate={function (page: 'landing' | 'auth' | 'dashboard' | 'tasks' | 'timer' | 'profile'): void {
-      throw new Error('Function not implemented.')
-  } } onLogout={function (): void {
-      throw new Error('Function not implemented.')
-  } } />
+  const router = useRouter()
+  const { logout } = useAuth()
+
+  const handleNavigate = (page: 'landing' | 'login' | 'dashboard' | 'tasks' | 'timer' | 'profile') => {
+    switch(page) {
+      case 'landing': router.push('/'); break
+      case 'login': router.push('/login'); break
+      case 'dashboard': router.push('/dashboard'); break
+      case 'tasks': router.push('/tasks'); break
+      case 'timer': router.push('/timer'); break
+      case 'profile': router.push('/profile'); break
+    }
+  }
+
+  return <Dashboard onNavigate={handleNavigate} onLogout={logout} />
 }

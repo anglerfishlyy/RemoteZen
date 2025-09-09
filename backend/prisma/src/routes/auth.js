@@ -6,6 +6,21 @@ import { PrismaClient } from "@prisma/client";
 const router = express.Router();
 const prisma = new PrismaClient();
 
+router.get('/validate-token', async (req, res) => {
+  const token = req.headers.authorization?.split(' ')[1]
+  if (!token) return res.json({ valid: false })
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET)
+    const user = await prisma.user.findUnique({ where: { id: decoded.id } })
+    if (!user) return res.json({ valid: false })
+
+    res.json({ valid: true, user: { id: user.id, email: user.email, name: user.name } })
+  } catch (err) {
+    res.json({ valid: false })
+  }
+})
+
 // Signup
 router.post("/signup", async (req, res) => {
   const { name, email, password } = req.body;
@@ -33,7 +48,7 @@ router.post("/login", async (req, res) => {
   const token = jwt.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET, {
     expiresIn: "1d",
   });
-  res.json({ token });
+  res.json({ token,  user: { id: user.id, email: user.email, name: user.name }  });
 });
 
 export default router;

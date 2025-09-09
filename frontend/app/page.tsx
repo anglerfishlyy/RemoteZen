@@ -7,7 +7,7 @@ export default function Home() {
   const router = useRouter()
 
   const handleNavigate = (
-    page: 'landing' | 'auth' | 'dashboard' | 'tasks' | 'timer' | 'profile'
+    page: 'landing' | 'login' | 'dashboard' | 'tasks' | 'timer' | 'profile'
   ) => {
     switch (page) {
       case 'dashboard':
@@ -22,8 +22,8 @@ export default function Home() {
       case 'timer':
         router.push('/timer')
         break
-      case 'auth':
-        router.push('/auth')
+      case 'login':
+        router.push('/login')
         break
       default:
         router.push('/')
