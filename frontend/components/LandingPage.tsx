@@ -19,7 +19,7 @@ import {
   Play
 } from 'lucide-react'
 
-type NavigateFunction = (page: 'landing' | 'login' | 'dashboard' | 'tasks' | 'timer' | 'profile') => void;
+type NavigateFunction = (page: 'landing' |'analytics' | 'login' | 'dashboard' | 'tasks' | 'timer' | 'profile') => void;
 
 interface LandingPageProps {
   onNavigate: NavigateFunction;

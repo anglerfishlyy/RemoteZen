@@ -1,17 +1,17 @@
-"use client"
+"use client";
 
-import React from 'react'
-import { motion } from "framer-motion"
-import { Button } from './ui/button'
-import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
+import React from 'react';
+import { motion } from "framer-motion";
+import { Button } from './ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from './ui/dropdown-menu'
-import { Badge } from './ui/badge'
+} from './ui/dropdown-menu';
+import { Badge } from './ui/badge';
 import {
   BarChart3,
   CheckSquare,
@@ -21,9 +21,9 @@ import {
   Settings,
   Bell,
   Search,
-} from 'lucide-react'
+} from 'lucide-react';
 
-type NavigateFunction = (page: 'landing' | 'auth' | 'dashboard' | 'tasks' | 'timer' | 'profile') => void;
+type NavigateFunction = (page: 'landing' | 'login' | 'dashboard' | 'tasks' | 'timer' | 'analytics' | 'profile') => void;
 
 interface HeaderProps {
   currentPage: string;
@@ -32,7 +32,6 @@ interface HeaderProps {
 }
 
 export default function Header({ currentPage, onNavigate, onLogout }: HeaderProps) {
-
   return (
     <header className="fixed top-0 w-full z-50 bg-black/20 backdrop-blur-xl border-b border-white/10">
       <div className="container mx-auto px-6 py-4">
@@ -57,28 +56,36 @@ export default function Header({ currentPage, onNavigate, onLogout }: HeaderProp
           <nav className="hidden md:flex items-center space-x-1">
             <Button
               variant="ghost"
-              className={`text-white hover:bg-white/10 ${
-                currentPage === 'dashboard' ? 'bg-white/10' : ''
+              className={`text-white hover:bg-white/10 transition-colors ${
+                currentPage === 'dashboard' 
+                  ? 'bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-500/30' 
+                  : ''
               }`}
               onClick={() => onNavigate('dashboard')}
             >
               <BarChart3 className="w-4 h-4 mr-2" />
               Dashboard
             </Button>
+            
             <Button
               variant="ghost"
-              className={`text-white hover:bg-white/10 ${
-                currentPage === 'tasks' ? 'bg-white/10' : ''
+              className={`text-white hover:bg-white/10 transition-colors ${
+                currentPage === 'tasks' 
+                  ? 'bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-500/30' 
+                  : ''
               }`}
               onClick={() => onNavigate('tasks')}
             >
               <CheckSquare className="w-4 h-4 mr-2" />
               Tasks
             </Button>
+            
             <Button
               variant="ghost"
-              className={`text-white hover:bg-white/10 ${
-                currentPage === 'timer' ? 'bg-white/10' : ''
+              className={`text-white hover:bg-white/10 transition-colors ${
+                currentPage === 'timer' 
+                  ? 'bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-500/30' 
+                  : ''
               }`}
               onClick={() => onNavigate('timer')}
             >
@@ -149,5 +156,5 @@ export default function Header({ currentPage, onNavigate, onLogout }: HeaderProp
         </div>
       </div>
     </header>
-  )
+  );
 }

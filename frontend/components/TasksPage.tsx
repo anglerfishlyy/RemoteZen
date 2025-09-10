@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { Badge } from './ui/badge';
 import DashboardLayout from './DashboardLayout';
+import Sidebar from './Sidebar';
 import { 
   Plus, 
   Search, 
@@ -29,7 +30,7 @@ import {
   Paperclip
 } from 'lucide-react';
 
-type NavigateFunction = (page: 'landing' | 'auth' | 'dashboard' | 'tasks' | 'timer' | 'profile') => void;
+type NavigateFunction = (page: 'landing' |'analytics' | 'login' | 'dashboard' | 'tasks' | 'timer' | 'profile') => void;
 
 interface TasksPageProps {
   onNavigate: NavigateFunction;

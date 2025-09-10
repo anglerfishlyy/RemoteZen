@@ -1,11 +1,38 @@
-"use client"
+"use client";
 
-import TasksPage from '@/components/TasksPage'
+import { useRouter } from "next/navigation";
+import TasksPage from "@/components/TasksPage";
 
 export default function Tasks() {
-  return <TasksPage onNavigate={function (page: 'landing' | 'auth' | 'dashboard' | 'tasks' | 'timer' | 'profile'): void {
-      throw new Error('Function not implemented.')
-  } } onLogout={function (): void {
-      throw new Error('Function not implemented.')
-  } } />
+  const router = useRouter();
+
+  const handleNavigate = (page: 'landing' | 'login' | 'dashboard' | 'tasks' | 'timer' | 'profile') => {
+    switch (page) {
+      case "dashboard":
+        router.push("/dashboard");
+        break;
+      case "tasks":
+        router.push("/tasks");
+        break;
+      case "timer":
+        router.push("/timer");
+        break;
+      case "profile":
+        router.push("/profile");
+        break;
+      case "login":
+        router.push("/login");
+        break;
+      case "landing":
+      default:
+        router.push("/");
+    }
+  };
+
+  const handleLogout = () => {
+    // clear auth state, cookies, etc.
+    router.push("/login");
+  };
+
+  return <TasksPage onNavigate={handleNavigate} onLogout={handleLogout} />;
 }

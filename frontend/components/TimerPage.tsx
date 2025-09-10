@@ -1,21 +1,20 @@
 "use client"
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react"
 import { motion } from "framer-motion"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { Button } from './ui/button';
-import { Badge } from './ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Avatar, AvatarFallback } from './ui/avatar';
-import { Progress } from './ui/progress';
-import Sidebar from './Sidebar';
-import { ImageWithFallback } from './ImageWithFallback';
-import { 
-  Play, 
-  Pause, 
-  Square, 
-  RotateCcw, 
-  Timer, 
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card"
+import { Button } from "./ui/button"
+import { Badge } from "./ui/badge"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select"
+import { Avatar, AvatarFallback } from "./ui/avatar"
+import { Progress } from "./ui/progress"
+import Sidebar from "./Sidebar"
+import { ImageWithFallback } from "./ImageWithFallback"
+import {
+  Play,
+  Pause,
+  RotateCcw,
+  Timer,
   Target,
   Clock,
   Zap,
@@ -24,66 +23,67 @@ import {
   Settings,
   TrendingUp,
   Users,
-  Coffee
-} from 'lucide-react';
+  Coffee,
+} from "lucide-react"
 
-type NavigateFunction = (page: 'landing' | 'auth' | 'dashboard' | 'tasks' | 'timer' | 'profile') => void;
+type NavigateFunction = (
+  page: "landing" |"analytics" | "login" | "dashboard" | "tasks" | "timer" | "profile"
+) => void;
 
 interface TimerPageProps {
-  onNavigate: NavigateFunction;
-  onLogout: () => void;
+  onNavigate: NavigateFunction
+  onLogout: () => void
 }
 
 export default function TimerPage({ onNavigate, onLogout }: TimerPageProps) {
-  const [selectedTask, setSelectedTask] = useState<string>('');
-  const [currentTime, setCurrentTime] = useState(25 * 60); // 25 minutes in seconds
-  const [isRunning, setIsRunning] = useState(false);
-  const [mode, setMode] = useState<'focus' | 'break'>('focus');
-  const [sessionsCompleted, setSessionsCompleted] = useState(0);
+  const [selectedTask, setSelectedTask] = useState<string>("")
+  const [currentTime, setCurrentTime] = useState(25 * 60) // 25 minutes in seconds
+  const [isRunning, setIsRunning] = useState(false)
+  const [mode, setMode] = useState<"focus" | "break">("focus")
+  const [sessionsCompleted, setSessionsCompleted] = useState(0)
 
-  const focusTime = 25 * 60; // 25 minutes
-  const breakTime = 5 * 60; // 5 minutes
+  const focusTime = 25 * 60
+  const breakTime = 5 * 60
 
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-    
+    let interval: NodeJS.Timeout
+
     if (isRunning && currentTime > 0) {
       interval = setInterval(() => {
-        setCurrentTime((time) => time - 1);
-      }, 1000);
+        setCurrentTime((time) => time - 1)
+      }, 1000)
     } else if (currentTime === 0) {
-      // Timer completed
-      setIsRunning(false);
-      if (mode === 'focus') {
-        setSessionsCompleted(prev => prev + 1);
-        setMode('break');
-        setCurrentTime(breakTime);
+      setIsRunning(false)
+      if (mode === "focus") {
+        setSessionsCompleted((prev) => prev + 1)
+        setMode("break")
+        setCurrentTime(breakTime)
       } else {
-        setMode('focus');
-        setCurrentTime(focusTime);
+        setMode("focus")
+        setCurrentTime(focusTime)
       }
     }
 
-    return () => clearInterval(interval);
-  }, [isRunning, currentTime, mode, focusTime, breakTime]);
+    return () => clearInterval(interval)
+  }, [isRunning, currentTime, mode, focusTime, breakTime])
 
   const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
+  }
 
   const getProgress = () => {
-    const totalTime = mode === 'focus' ? focusTime : breakTime;
-    return ((totalTime - currentTime) / totalTime) * 100;
-  };
+    const totalTime = mode === "focus" ? focusTime : breakTime
+    return ((totalTime - currentTime) / totalTime) * 100
+  }
 
-  const handleStart = () => setIsRunning(true);
-  const handlePause = () => setIsRunning(false);
+  const handleStart = () => setIsRunning(true)
+  const handlePause = () => setIsRunning(false)
   const handleReset = () => {
-    setIsRunning(false);
-    setCurrentTime(mode === 'focus' ? focusTime : breakTime);
-  };
+    setIsRunning(false)
+    setCurrentTime(mode === "focus" ? focusTime : breakTime)
+  }
 
   const tasks = [
     { id: '1', title: 'Design new landing page', status: 'in-progress' },
@@ -184,7 +184,7 @@ export default function TimerPage({ onNavigate, onLogout }: TimerPageProps) {
                         <SelectValue placeholder="Choose a task or start without one" />
                       </SelectTrigger>
                       <SelectContent className="bg-black/90 border-white/10">
-                        <SelectItem value="">No specific task</SelectItem>
+                        <SelectItem value="no">No specific task</SelectItem>
                         {tasks.map((task) => (
                           <SelectItem key={task.id} value={task.id}>
                             {task.title}

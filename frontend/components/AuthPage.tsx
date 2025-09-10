@@ -23,7 +23,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/app/providers'
 
-type NavigateFunction = (page: 'landing' | 'login' | 'dashboard' | 'tasks' | 'timer' | 'profile') => void;
+type NavigateFunction = (page: 'landing' |'analytics'| 'login' | 'dashboard' | 'tasks' | 'timer' | 'profile') => void;
 
 export default function AuthPage() {
   const router = useRouter()
@@ -37,7 +37,7 @@ export default function AuthPage() {
   const handleNavigate: NavigateFunction = (page) => {
     switch (page) {
       case 'dashboard':
-        router.push('/dashboard/dashboard')
+        router.push('/dashboard')
         break
       case 'profile':
         router.push('/profile')
@@ -50,6 +50,9 @@ export default function AuthPage() {
         break
       case 'login':
         router.push('/login')
+        break
+      case 'analytics':
+        router.push('/analytics')
         break
       default:
         router.push('/')

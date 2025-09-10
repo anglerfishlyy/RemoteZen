@@ -1,7 +1,6 @@
 "use client"
-
 import React from 'react'
-import { motion } from "framer-motion"
+import { motion } from 'framer-motion'
 import { Button } from './ui/button'
 import { Badge } from './ui/badge'
 import { 
@@ -15,43 +14,57 @@ import {
   Users,
   Calendar,
   FileText,
-  ChevronRight
+  ChevronRight,
+  TrendingUp
 } from 'lucide-react'
 
 const navigationItems = [
   {
     title: 'Overview',
     href: '/dashboard',
+    page: 'dashboard',
     icon: BarChart3,
     badge: null
   },
   {
     title: 'Tasks',
     href: '/tasks',
+    page: 'tasks',
     icon: CheckSquare,
     badge: '12'
   },
   {
     title: 'Focus Timer',
     href: '/timer',
+    page: 'timer',
     icon: Timer,
+    badge: null
+  },
+  {
+    title: 'Analytics',
+    href: '/analytics',
+    page: 'analytics',
+    icon: TrendingUp,
     badge: null
   },
   {
     title: 'Team',
     href: '/team',
+    page: 'team',
     icon: Users,
     badge: null
   },
   {
     title: 'Calendar',
     href: '/calendar',
+    page: 'calendar',
     icon: Calendar,
     badge: '3'
   },
   {
     title: 'Documents',
     href: '/documents',
+    page: 'documents',
     icon: FileText,
     badge: null
   }
@@ -70,7 +83,8 @@ const quickActions = [
   }
 ]
 
-type NavigateFunction = (page: 'landing' | 'auth' | 'dashboard' | 'tasks' | 'timer' | 'profile') => void;
+// Updated to match your main App component's type
+type NavigateFunction = (page: 'landing' | 'login' | 'dashboard' | 'tasks' | 'timer' | 'analytics' | 'profile') => void;
 
 interface SidebarProps {
   currentPage: string;
@@ -78,6 +92,7 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ currentPage, onNavigate }: SidebarProps) {
+  console.log('Sidebar rendered with currentPage:', currentPage); // Debug log
 
   return (
     <aside className="fixed left-0 top-16 h-[calc(100vh-4rem)] w-64 bg-black/20 backdrop-blur-xl border-r border-white/10 overflow-y-auto">
@@ -85,7 +100,7 @@ export default function Sidebar({ currentPage, onNavigate }: SidebarProps) {
         {/* Navigation */}
         <nav className="space-y-2">
           {navigationItems.map((item, index) => {
-            const isActive = currentPage === item.href.replace('/', '')
+            const isActive = currentPage === item.page
             return (
               <motion.div
                 key={item.href}
@@ -100,7 +115,14 @@ export default function Sidebar({ currentPage, onNavigate }: SidebarProps) {
                       ? 'bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-white border border-blue-500/30' 
                       : 'text-gray-300 hover:text-white hover:bg-white/10'
                   }`}
-                  onClick={() => onNavigate(item.href.replace('/', '') as any)}
+                  onClick={() => {
+                    console.log('Sidebar navigation clicked:', item.page); // Debug log
+                    if (typeof onNavigate === 'function') {
+                      onNavigate(item.page as any);
+                    } else {
+                      console.error('onNavigate is not a function in Sidebar');
+                    }
+                  }}
                 >
                   <item.icon className="w-5 h-5 mr-3" />
                   <span className="flex-1">{item.title}</span>
@@ -171,7 +193,14 @@ export default function Sidebar({ currentPage, onNavigate }: SidebarProps) {
           <Button
             variant="ghost"
             className="w-full justify-start text-gray-300 hover:text-white hover:bg-white/10"
-            onClick={() => onNavigate('profile')}
+            onClick={() => {
+              console.log('Profile navigation clicked'); // Debug log
+              if (typeof onNavigate === 'function') {
+                onNavigate('profile');
+              } else {
+                console.error('onNavigate is not a function in Sidebar');
+              }
+            }}
           >
             <User className="w-4 h-4 mr-3" />
             Profile

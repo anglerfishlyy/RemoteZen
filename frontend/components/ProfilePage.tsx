@@ -37,7 +37,7 @@ import {
   Calendar
 } from 'lucide-react';
 
-type NavigateFunction = (page: 'landing' | 'auth' | 'dashboard' | 'tasks' | 'timer' | 'profile') => void;
+type NavigateFunction = (page: 'landing' |'analytics' | 'login' | 'dashboard' | 'tasks' | 'timer' | 'profile') => void;
 
 interface ProfilePageProps {
   onNavigate: NavigateFunction;
