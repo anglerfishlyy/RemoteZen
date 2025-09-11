@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -14,60 +8,114 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  name      String
-  email     String   @unique
-  password  String
-  createdAt DateTime @default(now())
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(MEMBER)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  teams     TeamMember[]
-  tasks     Task[]        @relation("UserTasks")
-  focusLogs FocusLog[]
+  teams         TeamMember[]
+  createdTasks  Task[]       @relation("CreatedTasks")
+  assignedTasks Task[]       @relation("AssignedTasks")
+  timers        Timer[]
+  focusLogs     FocusLog[]
+  invitations   Invitation[] @relation("UserInvitations")
 }
 
 model Team {
-  id        String       @id @default(uuid())
+  id        String   @id @default(uuid())
   name      String
-  createdAt DateTime     @default(now())
+  createdAt DateTime @default(now())
 
-  members   TeamMember[]
-  tasks     Task[]
+  members     TeamMember[]
+  tasks       Task[]
+  invitations Invitation[]
 }
 
 model TeamMember {
-  id        String   @id @default(uuid())
-  role      String   @default("member")
-  joinedAt  DateTime @default(now())
+  id       String   @id @default(uuid())
+  role     Role     @default(MEMBER)
+  joinedAt DateTime @default(now())
 
-  user   User @relation(fields: [userId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
   userId String
-  team   Team @relation(fields: [teamId], references: [id])
+  team   Team   @relation(fields: [teamId], references: [id])
   teamId String
 
   @@unique([teamId, userId])
 }
 
 model Task {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   title       String
   description String?
-  status      String   @default("todo") // todo / in-progress / done
+  status      Status    @default(PENDING)
   dueDate     DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-  team      Team   @relation(fields: [teamId], references: [id])
-  teamId    String
-  assignedTo User? @relation("UserTasks", fields: [assignedToId], references: [id])
+  // Relations
+  team         Team    @relation(fields: [teamId], references: [id])
+  teamId       String
+  createdBy    User    @relation("CreatedTasks", fields: [createdById], references: [id])
+  createdById  String
+  assignedTo   User?   @relation("AssignedTasks", fields: [assignedToId], references: [id])
   assignedToId String?
+
+  timers Timer[]
+}
+
+model Timer {
+  id        String    @id @default(uuid())
+  startedAt DateTime  @default(now())
+  endedAt   DateTime?
+  duration  Int? // seconds
+
+  task   Task   @relation(fields: [taskId], references: [id])
+  taskId String
+  user   User   @relation(fields: [userId], references: [id])
+  userId String
 }
 
 model FocusLog {
-  id        String   @id @default(uuid())
-  startTime DateTime @default(now())
+  id        String    @id @default(uuid())
+  startTime DateTime  @default(now())
   endTime   DateTime?
   duration  Int?
 
-  user   User @relation(fields: [userId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
   userId String
+}
+
+model Invitation {
+  id        String       @id @default(uuid())
+  email     String
+  role      Role         @default(MEMBER)
+  status    InviteStatus @default(PENDING)
+  createdAt DateTime     @default(now())
+
+  team        Team   @relation(fields: [teamId], references: [id])
+  teamId      String
+  invitedBy   User   @relation("UserInvitations", fields: [invitedById], references: [id])
+  invitedById String
+}
+
+enum Role {
+  MEMBER
+  MANAGER
+  ADMIN
+}
+
+enum Status {
+  PENDING
+  IN_PROGRESS
+  DONE
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
 }

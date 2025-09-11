@@ -9,7 +9,7 @@ const prisma = new PrismaClient();
 router.post("/", authMiddleware, async (req, res) => {
   const { name } = req.body;
   const team = await prisma.team.create({
-    data: { name, members: { create: { userId: req.user.id, role: "admin" } } },
+    data: { name, members: { create: { userId: req.user.id, role: "ADMIN" } } },
   });
   res.json(team);
 });
