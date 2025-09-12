@@ -26,11 +26,21 @@ export function useAuth() {
   return context
 }
 
+function normalizeBaseUrl(url: string): string {
+  if (!url) return 'http://localhost:5000'
+  // Add scheme if missing
+  if (!/^https?:\/\//i.test(url)) {
+    return `http://${url}`
+  }
+  // Trim trailing slash
+  return url.replace(/\/$/, '')
+}
+
 export function Providers({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [user, setUser] = useState<User | null>(null)
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
+  const API_URL = normalizeBaseUrl(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000')
 
   // Check for existing token on mount
   useEffect(() => {
@@ -51,7 +61,7 @@ export function Providers({ children }: { children: ReactNode }) {
           logout()
         }
       } catch (err) {
-        console.error('Token validation failed:', err)
+        console.error('Token validation failed:', err, 'Base URL:', API_URL)
         logout()
       }
     }
@@ -68,14 +78,14 @@ export function Providers({ children }: { children: ReactNode }) {
         body: JSON.stringify({ email, password }),
       })
 
-      const data = await res.json()
+      const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || 'Login failed')
 
       localStorage.setItem('token', data.token)
       setIsAuthenticated(true)
       setUser(data.user)
     } catch (err) {
-      console.error('Login error:', err)
+      console.error('Login error:', err, 'Base URL:', API_URL)
       throw err
     }
   }
@@ -89,7 +99,7 @@ export function Providers({ children }: { children: ReactNode }) {
         body: JSON.stringify({ name, email, password }),
       })
 
-      const data = await res.json()
+      const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || 'Signup failed')
 
       // Save token and set user directly
@@ -97,7 +107,7 @@ export function Providers({ children }: { children: ReactNode }) {
       setIsAuthenticated(true)
       setUser(data.user)
     } catch (err) {
-      console.error('Signup error:', err)
+      console.error('Signup error:', err, 'Base URL:', API_URL)
       throw err
     }
   }

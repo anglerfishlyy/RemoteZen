@@ -49,8 +49,8 @@ const navigationItems = [
   },
   {
     title: 'Team',
-    href: '/team',
-    page: 'team',
+    href: '/teams',
+    page: 'teams',
     icon: Users,
     badge: null
   },
@@ -84,7 +84,7 @@ const quickActions = [
 ]
 
 // Updated to match your main App component's type
-type NavigateFunction = (page: 'landing' | 'login' | 'dashboard' | 'tasks' | 'timer' | 'analytics' | 'profile') => void;
+type NavigateFunction = (page: 'landing' | 'login' | 'dashboard' | 'tasks' | 'timer' | 'analytics' | 'profile' | 'teams') => void;
 
 interface SidebarProps {
   currentPage: string;
