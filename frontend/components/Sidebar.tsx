@@ -95,7 +95,7 @@ export default function Sidebar({ currentPage, onNavigate }: SidebarProps) {
   console.log('Sidebar rendered with currentPage:', currentPage); // Debug log
 
   return (
-    <aside className="fixed left-0 top-16 h-[calc(100vh-4rem)] w-64 bg-black/20 backdrop-blur-xl border-r border-white/10 overflow-y-auto">
+    <aside className="fixed left-0 top-16 z-40 h-[calc(100vh-4rem)] w-64 bg-black/20 backdrop-blur-xl border-r border-white/10 overflow-y-auto">
       <div className="p-6">
         {/* Navigation */}
         <nav className="space-y-2">

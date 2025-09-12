@@ -7,6 +7,17 @@ const prisma = new PrismaClient();
 
 // Start Focus
 router.post("/start", authMiddleware, async (req, res) => {
+  const { taskId } = req.body;
+  if (!taskId) return res.status(400).json({ error: "taskId is required" });
+
+  const task = await prisma.task.findUnique({ where: { id: taskId } });
+  if (!task) return res.status(404).json({ error: "Task not found" });
+
+  const membership = await prisma.teamMember.findFirst({
+    where: { teamId: task.teamId, userId: req.user.id },
+  });
+  if (!membership) return res.status(401).json({ error: "Unauthorized for this team" });
+
   const log = await prisma.focusLog.create({
     data: { userId: req.user.id, startTime: new Date() },
   });

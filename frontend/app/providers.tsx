@@ -39,12 +39,12 @@ export function Providers({ children }: { children: ReactNode }) {
 
     const validateToken = async () => {
       try {
-        const res = await fetch(`${API_URL}/auth/validate-token`, {
+        const res = await fetch(`${API_URL}/auth/me`, {
           headers: { Authorization: `Bearer ${token}` },
         })
 
         const data = await res.json()
-        if (res.ok && data.valid) {
+        if (res.ok && data.user) {
           setIsAuthenticated(true)
           setUser(data.user)
         } else {
@@ -83,7 +83,7 @@ export function Providers({ children }: { children: ReactNode }) {
   // Signup
   const signup = async (name: string, email: string, password: string) => {
     try {
-      const res = await fetch(`${API_URL}/auth/signup`, {
+      const res = await fetch(`${API_URL}/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, password }),
@@ -92,8 +92,10 @@ export function Providers({ children }: { children: ReactNode }) {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Signup failed')
 
-      // Auto-login
-      await login(email, password)
+      // Save token and set user directly
+      localStorage.setItem('token', data.token)
+      setIsAuthenticated(true)
+      setUser(data.user)
     } catch (err) {
       console.error('Signup error:', err)
       throw err

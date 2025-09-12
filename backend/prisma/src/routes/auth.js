@@ -28,15 +28,45 @@ router.post("/register", async (req, res) => {
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
-    const created = await prisma.user.create({
-      data: { name, email, passwordHash },
+
+    const result = await prisma.$transaction(async (tx) => {
+      const createdUser = await tx.user.create({ data: { name, email, passwordHash } });
+
+      const personalTeam = await tx.team.create({
+        data: { name: `${createdUser.name}'s Team` },
+      });
+
+      await tx.teamMember.create({
+        data: { teamId: personalTeam.id, userId: createdUser.id, role: "MANAGER" },
+      });
+
+      // Accept pending invitations for this email
+      const pendingInvites = await tx.invitation.findMany({
+        where: { email: createdUser.email, status: "PENDING" },
+      });
+
+      for (const invite of pendingInvites) {
+        await tx.teamMember.upsert({
+          where: { teamId_userId: { teamId: invite.teamId, userId: createdUser.id } },
+          update: {},
+          create: { teamId: invite.teamId, userId: createdUser.id, role: invite.role },
+        });
+        await tx.invitation.update({ where: { id: invite.id }, data: { status: "ACCEPTED" } });
+      }
+
+      const userWithTeams = await tx.user.findUnique({
+        where: { id: createdUser.id },
+        include: { teams: { include: { team: true } } },
+      });
+
+      return userWithTeams;
     });
 
-    const token = jwt.sign({ id: created.id, email: created.email }, process.env.JWT_SECRET, { expiresIn: "7d" });
+    const token = jwt.sign({ id: result.id, email: result.email }, process.env.JWT_SECRET, { expiresIn: "7d" });
 
     return res.status(201).json({
-      user: { id: created.id, email: created.email, name: created.name },
-      teams: [],
+      user: { id: result.id, email: result.email, name: result.name },
+      teams: mapTeams(result.teams),
       token,
     });
   } catch (error) {

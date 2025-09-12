@@ -30,11 +30,16 @@ router.post("/:id/join", authMiddleware, async (req, res) => {
 // List Members
 router.get("/:id/members", authMiddleware, async (req, res) => {
   const { id } = req.params;
+  // ensure requester is a member
+  const membership = await prisma.teamMember.findFirst({ where: { teamId: id, userId: req.user.id } });
+  if (!membership) return res.status(401).json({ error: "Unauthorized for this team" });
+
   const members = await prisma.teamMember.findMany({
     where: { teamId: id },
     include: { user: true },
+    orderBy: { joinedAt: 'asc' }
   });
-  res.json(members);
+  res.json(members.map(m => ({ id: m.id, role: m.role, joinedAt: m.joinedAt, user: { id: m.user.id, name: m.user.name, email: m.user.email } })));
 });
 
 export default router;
