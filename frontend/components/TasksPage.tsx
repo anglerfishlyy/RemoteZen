@@ -1,8 +1,8 @@
 "use client"
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from "framer-motion"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -11,7 +11,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { Badge } from './ui/badge';
-import DashboardLayout from './DashboardLayout';
 import Sidebar from './Sidebar';
 import { 
   Plus, 
@@ -19,16 +18,15 @@ import {
   Filter, 
   MoreHorizontal, 
   Clock, 
-  User, 
   Calendar,
   Flag,
-  Timer,
   Play,
   Pause,
   CheckSquare2,
   MessageSquare,
   Paperclip
 } from 'lucide-react';
+import { useAuth } from '@/app/providers';
 
 type NavigateFunction = (page: 'landing' |'analytics' | 'login' | 'dashboard' | 'tasks' | 'timer' | 'profile') => void;
 
@@ -37,99 +35,145 @@ interface TasksPageProps {
   onLogout: () => void;
 }
 
-export default function TasksPage({ onNavigate, onLogout }: TasksPageProps) {
+interface UserBrief { id: string; name: string }
+interface TaskType {
+  id: string;
+  title: string;
+  description?: string | null;
+  status: 'PENDING' | 'IN_PROGRESS' | 'DONE';
+  assignedTo?: UserBrief | null;
+  createdBy?: UserBrief | null;
+  team?: { id: string; name: string } | null;
+  dueDate?: string | null;
+  timeSpent?: string;
+  timeEstimate?: string;
+  comments?: number;
+  attachments?: number;
+  isActive?: boolean;
+}
+interface TeamMemberBrief { id: string; name: string }
+
+export default function TasksPage({ onNavigate, onLogout: _onLogout }: TasksPageProps) {
   const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const { user } = useAuth();
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+  const [loading, setLoading] = useState(true);
+  const [tasks, setTasks] = useState<TaskType[]>([]);
+  const [tasksMy, setTasksMy] = useState<TaskType[]>([]);
+  const [showMine, setShowMine] = useState(false);
+  const [teamId, setTeamId] = useState<string>('');
+  const [teamMembers, setTeamMembers] = useState<TeamMemberBrief[]>([]);
+  const [activeTimers, setActiveTimers] = useState<number>(0);
+
+  // Derive user's first teamId for now
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token || !user) return;
+    // Call /auth/me to get teams so we know teamId and members
+    const load = async () => {
+      try {
+        const res = await fetch(`${API_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
+        const data = await res.json();
+        const firstTeam = data.teams?.[0];
+        if (firstTeam) {
+          setTeamId(firstTeam.id);
+          // fetch members of this team to populate assignee select
+          const memRes = await fetch(`${API_URL}/teams/${firstTeam.id}/members`, { headers: { Authorization: `Bearer ${token}` } });
+          const mem = await memRes.json();
+          setTeamMembers((mem || []).map((m: { user: UserBrief }) => ({ id: m.user.id, name: m.user.name })));
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    load();
+  }, [API_URL, user]);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token || !teamId) return;
+    const fetchTasks = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`${API_URL}/tasks?teamId=${teamId}`, { headers: { Authorization: `Bearer ${token}` } });
+        const data = await res.json();
+        setTasks(Array.isArray(data) ? data : []);
+        // also load my tasks
+        const resMy = await fetch(`${API_URL}/tasks/my`, { headers: { Authorization: `Bearer ${token}` } });
+        const dataMy = await resMy.json();
+        setTasksMy(Array.isArray(dataMy) ? dataMy : []);
+        // load focus logs (active timers simulated: logs with no endTime)
+        const logsRes = await fetch(`${API_URL}/focus`, { headers: { Authorization: `Bearer ${token}` } });
+        const logs = await logsRes.json();
+        const active = Array.isArray(logs) ? logs.filter((l) => !l.endTime).length : 0;
+        setActiveTimers(active);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchTasks();
+  }, [API_URL, teamId]);
+
+  const sourceTasks: TaskType[] = showMine ? tasksMy : tasks;
+
+  const grouped = useMemo(() => {
+    const by: Record<string, TaskType[]> = { PENDING: [], IN_PROGRESS: [], DONE: [] };
+    for (const t of sourceTasks) {
+      (by[t.status] || by.PENDING).push(t);
+    }
+    return by;
+  }, [sourceTasks]);
+
+  const createTask = async (payload: { title: string; description?: string; dueDate?: string; assignedToId?: string }) => {
+    const token = localStorage.getItem('token');
+    if (!token || !teamId) return;
+    const res = await fetch(`${API_URL}/tasks`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ teamId, ...payload }),
+    });
+    const data: TaskType | { error?: string } = await res.json();
+    if (!res.ok) throw new Error(('error' in data && data.error) || 'Failed to create task');
+    // Optimistic update
+    setTasks((prev) => [data as TaskType, ...prev]);
+    // Ensure server is source of truth
+    try {
+      const refreshed = await fetch(`${API_URL}/tasks?teamId=${teamId}`, { headers: { Authorization: `Bearer ${token}` } });
+      const refreshedData = await refreshed.json();
+      if (Array.isArray(refreshedData)) setTasks(refreshedData);
+    } catch {}
+  };
+
+  const updateTask = async (id: string, updates: Partial<TaskType> & { status?: TaskType['status']; assignedToId?: string | null; dueDate?: string | null }) => {
+    const token = localStorage.getItem('token');
+    const res = await fetch(`${API_URL}/tasks/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify(updates),
+    });
+    const data: TaskType | { error?: string } = await res.json();
+    if (!res.ok) throw new Error(('error' in data && data.error) || 'Failed to update task');
+    setTasks((prev) => prev.map((t) => (t.id === id ? (data as TaskType) : t)));
+  };
+
+  const deleteTask = async (id: string) => {
+    const token = localStorage.getItem('token');
+    const res = await fetch(`${API_URL}/tasks/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.error || 'Failed to delete task');
+    }
+    setTasks((prev) => prev.filter((t) => t.id !== id));
+  };
 
   const columns = [
-    { id: 'todo', title: 'To Do', count: 8, color: 'border-gray-500' },
-    { id: 'in-progress', title: 'In Progress', count: 5, color: 'border-blue-500' },
-    { id: 'review', title: 'Review', count: 3, color: 'border-yellow-500' },
-    { id: 'done', title: 'Done', count: 12, color: 'border-green-500' }
+    { id: 'PENDING', title: 'Pending', count: grouped.PENDING.length, color: 'border-gray-500' },
+    { id: 'IN_PROGRESS', title: 'In Progress', count: grouped.IN_PROGRESS.length, color: 'border-blue-500' },
+    { id: 'DONE', title: 'Done', count: grouped.DONE.length, color: 'border-green-500' }
   ];
-
-  const tasks = {
-    'todo': [
-      {
-        id: 1,
-        title: "Implement user authentication",
-        description: "Set up JWT-based authentication system",
-        priority: "high",
-        assignee: { name: "Sarah M.", avatar: "SM" },
-        dueDate: "2024-01-15",
-        timeEstimate: "4h",
-        comments: 2,
-        attachments: 1
-      },
-      {
-        id: 2,
-        title: "Design mobile navigation",
-        description: "Create responsive navigation for mobile devices",
-        priority: "medium",
-        assignee: { name: "Mike R.", avatar: "MR" },
-        dueDate: "2024-01-18",
-        timeEstimate: "2h",
-        comments: 0,
-        attachments: 0
-      }
-    ],
-    'in-progress': [
-      {
-        id: 3,
-        title: "API endpoint optimization",
-        description: "Optimize database queries for better performance",
-        priority: "high",
-        assignee: { name: "You", avatar: "JD" },
-        dueDate: "2024-01-12",
-        timeEstimate: "6h",
-        timeSpent: "2h 30m",
-        comments: 5,
-        attachments: 2,
-        isActive: true
-      },
-      {
-        id: 4,
-        title: "Update documentation",
-        description: "Update API documentation with new endpoints",
-        priority: "low",
-        assignee: { name: "Emily C.", avatar: "EC" },
-        dueDate: "2024-01-20",
-        timeEstimate: "3h",
-        timeSpent: "1h 15m",
-        comments: 1,
-        attachments: 0
-      }
-    ],
-    'review': [
-      {
-        id: 5,
-        title: "Payment integration testing",
-        description: "Test Stripe payment integration thoroughly",
-        priority: "high",
-        assignee: { name: "David K.", avatar: "DK" },
-        dueDate: "2024-01-10",
-        timeEstimate: "4h",
-        timeSpent: "4h",
-        comments: 3,
-        attachments: 1
-      }
-    ],
-    'done': [
-      {
-        id: 6,
-        title: "Landing page redesign",
-        description: "Complete redesign of the marketing landing page",
-        priority: "medium",
-        assignee: { name: "Sarah M.", avatar: "SM" },
-        dueDate: "2024-01-08",
-        timeEstimate: "8h",
-        timeSpent: "7h 45m",
-        comments: 8,
-        attachments: 3,
-        completedAt: "2024-01-08"
-      }
-    ]
-  };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -140,7 +184,7 @@ export default function TasksPage({ onNavigate, onLogout }: TasksPageProps) {
     }
   };
 
-  const TaskCard = ({ task, columnId }: { task: any; columnId: string }) => (
+  const TaskCard = ({ task, columnId }: { task: TaskType; columnId: string }) => (
     <motion.div
       layout
       initial={{ opacity: 0, y: 20 }}
@@ -152,9 +196,9 @@ export default function TasksPage({ onNavigate, onLogout }: TasksPageProps) {
       <Card className="bg-black/60 backdrop-blur-xl border-white/10 hover:border-white/20 transition-all duration-300 cursor-pointer">
         <CardContent className="p-4">
           <div className="flex items-start justify-between mb-3">
-            <Badge variant="outline" className={`text-xs ${getPriorityColor(task.priority)}`}>
+            <Badge variant="outline" className={`text-xs ${getPriorityColor('medium')}`}>
               <Flag className="w-3 h-3 mr-1" />
-              {task.priority}
+              {columnId === 'PENDING' ? 'pending' : columnId === 'IN_PROGRESS' ? 'in progress' : 'done'}
             </Badge>
             <Button size="sm" variant="ghost" className="opacity-0 group-hover:opacity-100 transition-opacity">
               <MoreHorizontal className="w-4 h-4" />
@@ -168,10 +212,10 @@ export default function TasksPage({ onNavigate, onLogout }: TasksPageProps) {
             <div className="flex items-center space-x-2">
               <Avatar className="w-6 h-6">
                 <AvatarFallback className="bg-gradient-to-br from-blue-400 to-purple-600 text-white text-xs">
-                  {task.assignee.avatar}
+                  {(task.assignedTo?.name || 'U').slice(0,2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <span className="text-xs text-gray-400">{task.assignee.name}</span>
+              <span className="text-xs text-gray-400">{task.assignedTo?.name || 'Unassigned'}</span>
             </div>
             
             {task.isActive && (
@@ -186,7 +230,7 @@ export default function TasksPage({ onNavigate, onLogout }: TasksPageProps) {
             <div className="flex items-center space-x-3">
               <div className="flex items-center">
                 <Calendar className="w-3 h-3 mr-1" />
-                {task.dueDate}
+                {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'No due date'}
               </div>
               <div className="flex items-center">
                 <Clock className="w-3 h-3 mr-1" />
@@ -195,13 +239,13 @@ export default function TasksPage({ onNavigate, onLogout }: TasksPageProps) {
             </div>
             
             <div className="flex items-center space-x-2">
-              {task.comments > 0 && (
+              {(task.comments ?? 0) > 0 && (
                 <div className="flex items-center">
                   <MessageSquare className="w-3 h-3 mr-1" />
                   {task.comments}
                 </div>
               )}
-              {task.attachments > 0 && (
+              {(task.attachments ?? 0) > 0 && (
                 <div className="flex items-center">
                   <Paperclip className="w-3 h-3 mr-1" />
                   {task.attachments}
@@ -210,7 +254,7 @@ export default function TasksPage({ onNavigate, onLogout }: TasksPageProps) {
             </div>
           </div>
           
-          {columnId === 'in-progress' && (
+          {columnId === 'IN_PROGRESS' && (
             <div className="mt-3 pt-3 border-t border-white/10">
               <Button 
                 size="sm" 
@@ -232,16 +276,36 @@ export default function TasksPage({ onNavigate, onLogout }: TasksPageProps) {
               </Button>
             </div>
           )}
+
+          <div className="mt-3 flex items-center justify-between">
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-gray-300 hover:text-white"
+              onClick={async () => {
+                const next = task.status === 'PENDING' ? 'IN_PROGRESS' : task.status === 'IN_PROGRESS' ? 'DONE' : 'DONE';
+                try { await updateTask(task.id, { status: next }); } catch (e) { console.error(e); }
+              }}
+            >
+              <CheckSquare2 className="w-4 h-4 mr-2" />
+              {task.status === 'PENDING' ? 'Start' : task.status === 'IN_PROGRESS' ? 'Complete' : 'Done'}
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+              onClick={async () => { try { await deleteTask(task.id); } catch (e) { console.error(e); } }}
+            >
+              Delete
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </motion.div>
   );
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-[#0B0F17] via-[#0F1419] to-[#0B0F17]">
-      <Sidebar currentPage="tasks" onNavigate={onNavigate} onLogout={onLogout} />
-      
-      <div className="flex-1 flex flex-col overflow-hidden">
+    <div className="flex flex-col overflow-hidden">
         {/* Header */}
         <header className="bg-black/40 backdrop-blur-xl border-b border-white/10 px-6 py-4">
           <div className="flex items-center justify-between">
@@ -253,7 +317,7 @@ export default function TasksPage({ onNavigate, onLogout }: TasksPageProps) {
               >
                 Tasks
               </motion.h1>
-              <p className="text-gray-400 mt-1">Manage your team's work and stay organized.</p>
+              <p className="text-gray-400 mt-1">Manage your team’s work and stay organized.</p>
             </div>
             
             <div className="flex items-center space-x-4">
@@ -291,81 +355,8 @@ export default function TasksPage({ onNavigate, onLogout }: TasksPageProps) {
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="title">Task Title</Label>
-                      <Input
-                        id="title"
-                        placeholder="Enter task title"
-                        className="bg-white/5 border-white/10 text-white placeholder-gray-400"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="description">Description</Label>
-                      <Textarea
-                        id="description"
-                        placeholder="Describe the task"
-                        className="bg-white/5 border-white/10 text-white placeholder-gray-400"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label>Priority</Label>
-                        <Select>
-                          <SelectTrigger className="bg-white/5 border-white/10 text-white">
-                            <SelectValue placeholder="Select priority" />
-                          </SelectTrigger>
-                          <SelectContent className="bg-black/90 border-white/10">
-                            <SelectItem value="low">Low</SelectItem>
-                            <SelectItem value="medium">Medium</SelectItem>
-                            <SelectItem value="high">High</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label>Assignee</Label>
-                        <Select>
-                          <SelectTrigger className="bg-white/5 border-white/10 text-white">
-                            <SelectValue placeholder="Assign to" />
-                          </SelectTrigger>
-                          <SelectContent className="bg-black/90 border-white/10">
-                            <SelectItem value="you">You</SelectItem>
-                            <SelectItem value="sarah">Sarah M.</SelectItem>
-                            <SelectItem value="mike">Mike R.</SelectItem>
-                            <SelectItem value="emily">Emily C.</SelectItem>
-                            <SelectItem value="david">David K.</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="due-date">Due Date</Label>
-                        <Input
-                          id="due-date"
-                          type="date"
-                          className="bg-white/5 border-white/10 text-white"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="estimate">Time Estimate</Label>
-                        <Input
-                          id="estimate"
-                          placeholder="e.g., 2h 30m"
-                          className="bg-white/5 border-white/10 text-white placeholder-gray-400"
-                        />
-                      </div>
-                    </div>
-                    <div className="flex justify-end space-x-3 pt-4">
-                      <Button variant="ghost" onClick={() => setIsCreateDialogOpen(false)}>
-                        Cancel
-                      </Button>
-                      <Button 
-                        className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
-                        onClick={() => setIsCreateDialogOpen(false)}
-                      >
-                        Create Task
-                      </Button>
-                    </div>
+                    <TaskCreateForm onCreate={async (payload) => { await createTask(payload); setIsCreateDialogOpen(false); }} teamMembers={teamMembers} />
+                    
                   </div>
                 </DialogContent>
               </Dialog>
@@ -388,12 +379,15 @@ export default function TasksPage({ onNavigate, onLogout }: TasksPageProps) {
                 <Filter className="w-4 h-4 mr-2" />
                 Filter
               </Button>
+              <Button variant={showMine ? 'default' : 'ghost'} size="sm" onClick={() => setShowMine((v) => !v)} className={showMine ? 'bg-gradient-to-r from-blue-500 to-purple-600' : ''}>
+                {showMine ? 'Showing: My Tasks' : 'Show: My Tasks'}
+              </Button>
             </div>
             
             <div className="flex items-center space-x-2 text-sm text-gray-400">
-              <span>Total: 28 tasks</span>
+              <span>Total: {sourceTasks.length} tasks</span>
               <span>•</span>
-              <span>Active timers: 2</span>
+              <span>Active timers: {activeTimers}</span>
             </div>
           </div>
         </div>
@@ -401,7 +395,7 @@ export default function TasksPage({ onNavigate, onLogout }: TasksPageProps) {
         {/* Main Content */}
         <main className="flex-1 overflow-auto p-6">
           {viewMode === 'kanban' ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 h-full">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 h-full">
               {columns.map((column) => (
                 <motion.div 
                   key={column.id}
@@ -420,11 +414,11 @@ export default function TasksPage({ onNavigate, onLogout }: TasksPageProps) {
                   </div>
                   
                   <div className="flex-1 bg-black/20 backdrop-blur-xl border-x border-b border-white/10 rounded-b-lg p-4 space-y-4 overflow-y-auto">
-                    {tasks[column.id as keyof typeof tasks]?.map((task) => (
+                    {(grouped[column.id as keyof typeof grouped] || []).map((task) => (
                       <TaskCard key={task.id} task={task} columnId={column.id} />
                     ))}
                     
-                    {column.id === 'todo' && (
+                    {column.id === 'PENDING' && (
                       <motion.div
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
@@ -442,6 +436,15 @@ export default function TasksPage({ onNavigate, onLogout }: TasksPageProps) {
                   </div>
                 </motion.div>
               ))}
+              {!loading && sourceTasks.length === 0 && (
+                <div className="col-span-full">
+                  <Card className="bg-black/40 backdrop-blur-xl border-white/10">
+                    <CardContent className="p-10 text-center text-gray-400">
+                      No tasks yet. Create one to get started!
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
             </div>
           ) : (
             // List View (placeholder)
@@ -459,6 +462,56 @@ export default function TasksPage({ onNavigate, onLogout }: TasksPageProps) {
           )}
         </main>
       </div>
-    </div>
+    
+  );
+}
+
+function TaskCreateForm({ onCreate, teamMembers }: { onCreate: (p: { title: string; description?: string; dueDate?: string; assignedToId?: string }) => Promise<void>, teamMembers: TeamMemberBrief[] }) {
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [dueDate, setDueDate] = useState('');
+  const [assignedToId, setAssignedToId] = useState<string | undefined>(undefined);
+
+  return (
+    <>
+      <div>
+        <Label htmlFor="title">Task Title</Label>
+        <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Enter task title" className="bg-white/5 border-white/10 text-white placeholder-gray-400" />
+      </div>
+      <div>
+        <Label htmlFor="description">Description</Label>
+        <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Describe the task" className="bg-white/5 border-white/10 text-white placeholder-gray-400" />
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <Label>Assignee</Label>
+          <Select onValueChange={(v) => setAssignedToId(v)}>
+            <SelectTrigger className="bg-white/5 border-white/10 text-white">
+              <SelectValue placeholder="Assign to" />
+            </SelectTrigger>
+            <SelectContent className="bg-black/90 border-white/10">
+              {teamMembers.map((m) => (
+                <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label htmlFor="due-date">Due Date</Label>
+          <Input id="due-date" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="bg-white/5 border-white/10 text-white" />
+        </div>
+      </div>
+      <div className="flex justify-end space-x-3 pt-4">
+        <Button variant="ghost" onClick={() => { setTitle(''); setDescription(''); setDueDate(''); setAssignedToId(undefined); }}>
+          Clear
+        </Button>
+        <Button className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700" onClick={async () => {
+          await onCreate({ title, description, dueDate, assignedToId });
+          setTitle(''); setDescription(''); setDueDate(''); setAssignedToId(undefined);
+        }}>
+          Create Task
+        </Button>
+      </div>
+    </>
   );
 }

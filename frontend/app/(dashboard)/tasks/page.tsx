@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import TasksPage from "@/components/TasksPage";
+import { AuthGuard } from "@/components/AuthGuard";
 
 export default function Tasks() {
   const router = useRouter();
@@ -34,5 +35,9 @@ export default function Tasks() {
     router.push("/login");
   };
 
-  return <TasksPage onNavigate={handleNavigate} onLogout={handleLogout} />;
+  return (
+    <AuthGuard>
+      <TasksPage onNavigate={handleNavigate} onLogout={handleLogout} />
+    </AuthGuard>
+  );
 }
