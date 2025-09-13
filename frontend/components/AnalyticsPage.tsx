@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { TrendingUp, Clock, Target, Users, Activity, Calendar } from 'lucide-react';
-import { LineChart, Line, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import Header from './Header';
-import Sidebar from './Sidebar';
+import { AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { useAuth } from '@/app/providers';
 
 type NavigateFunction = (page: 'landing' | 'analytics' | 'login' | 'dashboard' | 'tasks' | 'timer' | 'profile') => void;
 
@@ -37,7 +36,9 @@ interface TimeBreakdown {
   color: string;
 }
 
-export default function AnalyticsPage({ onNavigate, onLogout }: AnalyticsPageProps) {
+export default function AnalyticsPage({ onNavigate: _onNavigate, onLogout: _onLogout }: AnalyticsPageProps) {
+  const { user } = useAuth()
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
   const [productivityData, setProductivityData] = useState<ProductivityData[]>([]);
   const [taskDistribution, setTaskDistribution] = useState<TaskDistribution[]>([]);
   const [weeklyStats, setWeeklyStats] = useState<WeeklyStats[]>([]);
@@ -45,83 +46,110 @@ export default function AnalyticsPage({ onNavigate, onLogout }: AnalyticsPagePro
   const [loading, setLoading] = useState(true);
   const [selectedPeriod, setSelectedPeriod] = useState('7d');
 
-  // Mock data - replace with actual API calls
   useEffect(() => {
     const fetchAnalytics = async () => {
       try {
         setLoading(true);
-        
-        // Simulate API calls
-        // const response = await fetch(`/api/analytics?period=${selectedPeriod}`);
-        // const data = await response.json();
+        const token = localStorage.getItem('token')
+        if (!token || !user) return
+        const meRes = await fetch(`${API_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
+        const me = await meRes.json()
+        const firstTeam = me?.teams?.[0]
+        if (!firstTeam) return
 
-        // Mock data for demonstration
-        setProductivityData([
-          { date: '2024-01-01', focus_time: 6.5, tasks_completed: 8, productivity_score: 85 },
-          { date: '2024-01-02', focus_time: 7.2, tasks_completed: 12, productivity_score: 92 },
-          { date: '2024-01-03', focus_time: 5.8, tasks_completed: 6, productivity_score: 78 },
-          { date: '2024-01-04', focus_time: 8.1, tasks_completed: 15, productivity_score: 96 },
-          { date: '2024-01-05', focus_time: 6.9, tasks_completed: 10, productivity_score: 88 },
-          { date: '2024-01-06', focus_time: 4.2, tasks_completed: 4, productivity_score: 65 },
-          { date: '2024-01-07', focus_time: 7.5, tasks_completed: 13, productivity_score: 94 },
-        ]);
+        const now = new Date()
+        const rangeDays = selectedPeriod === '90d' ? 90 : selectedPeriod === '30d' ? 30 : 7
+        const from = new Date(now.getTime() - rangeDays*24*60*60*1000)
+        const pRes = await fetch(`${API_URL}/analytics/productivity?teamId=${firstTeam.id}&from=${from.toISOString()}&to=${now.toISOString()}`, { headers: { Authorization: `Bearer ${token}` } })
+        const p = await pRes.json()
 
+        // Basic charts: convert productivity totals into chart-friendly shapes
+        const days: ProductivityData[] = Array.from({ length: rangeDays }).map((_, i) => {
+          const d = new Date(from.getTime() + i*24*60*60*1000)
+          return { date: d.toISOString().slice(0,10), focus_time: 0, tasks_completed: 0, productivity_score: 0 }
+        })
+        setProductivityData(days)
+
+        // Task distribution from current tasks
+        const tRes = await fetch(`${API_URL}/tasks?teamId=${firstTeam.id}`, { headers: { Authorization: `Bearer ${token}` } })
+        const tasks = await tRes.json()
+        const counts = { DONE: 0, IN_PROGRESS: 0, PENDING: 0 }
+        if (Array.isArray(tasks)) {
+          for (const t of tasks) {
+            if (t.status === 'DONE') counts.DONE++
+            else if (t.status === 'IN_PROGRESS') counts.IN_PROGRESS++
+            else counts.PENDING++
+          }
+        }
         setTaskDistribution([
-          { status: 'Completed', count: 45, color: '#06D6A0' },
-          { status: 'In Progress', count: 23, color: '#118AB2' },
-          { status: 'To Do', count: 32, color: '#FFD166' },
-          { status: 'Blocked', count: 8, color: '#EF476F' },
-        ]);
+          { status: 'Completed', count: counts.DONE, color: '#06D6A0' },
+          { status: 'In Progress', count: counts.IN_PROGRESS, color: '#118AB2' },
+          { status: 'To Do', count: counts.PENDING, color: '#FFD166' },
+        ])
 
+        // Weekly bars from productivity average
         setWeeklyStats([
-          { week: 'Week 1', team_productivity: 82, individual_productivity: 78 },
-          { week: 'Week 2', team_productivity: 88, individual_productivity: 85 },
-          { week: 'Week 3', team_productivity: 75, individual_productivity: 82 },
-          { week: 'Week 4', team_productivity: 91, individual_productivity: 89 },
-        ]);
-
+          { week: 'This Week', team_productivity: Math.min(100, Math.round(((p?.totalFocusSeconds||0)/(7*3600))*100)), individual_productivity: Math.min(100, Math.round(((p?.avgFocusPerUser||0)/3600)*100)) }
+        ])
         setTimeBreakdown([
-          { category: 'Deep Work', hours: 32, color: '#8B5CF6' },
-          { category: 'Meetings', hours: 18, color: '#06D6A0' },
-          { category: 'Communication', hours: 12, color: '#F59E0B' },
-          { category: 'Planning', hours: 8, color: '#EF4444' },
-        ]);
+          { category: 'Deep Work', hours: Math.round((p?.totalFocusSeconds||0)/3600), color: '#8B5CF6' },
+          { category: 'Other', hours: 0, color: '#06D6A0' }
+        ])
 
+        // Update stats with real data
+        const totalHours = Math.round((p?.totalFocusSeconds || 0) / 3600)
+        const hours = Math.floor(totalHours)
+        const minutes = Math.round(((p?.totalFocusSeconds || 0) % 3600) / 60)
+        const focusTimeStr = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`
+        
+        setStats({
+          totalFocusTime: focusTimeStr,
+          tasksCompleted: p?.tasksCompleted || 0,
+          productivityScore: Math.min(100, Math.round(((p?.totalFocusSeconds || 0) / (7 * 3600)) * 100)),
+          teamMembers: me?.teams?.[0]?.members?.length || 1
+        })
       } catch (error) {
         console.error('Failed to fetch analytics:', error);
       } finally {
         setLoading(false);
       }
-    };
+    }
+    fetchAnalytics()
+  }, [selectedPeriod, API_URL, user])
 
-    fetchAnalytics();
-  }, [selectedPeriod]);
+  // Dynamic stats based on real data
+  const [stats, setStats] = useState({
+    totalFocusTime: '0h',
+    tasksCompleted: 0,
+    productivityScore: 0,
+    teamMembers: 0
+  });
 
   const statCards = [
     {
       title: 'Total Focus Time',
-      value: '47.2h',
+      value: stats.totalFocusTime,
       change: '+12%',
       icon: Clock,
       gradient: 'from-purple-500 to-indigo-600'
     },
     {
       title: 'Tasks Completed',
-      value: '68',
+      value: stats.tasksCompleted.toString(),
       change: '+8%',
       icon: Target,
       gradient: 'from-teal-500 to-cyan-600'
     },
     {
       title: 'Productivity Score',
-      value: '87%',
+      value: `${stats.productivityScore}%`,
       change: '+5%',
       icon: TrendingUp,
       gradient: 'from-orange-500 to-red-600'
     },
     {
       title: 'Team Members',
-      value: '12',
+      value: stats.teamMembers.toString(),
       change: '+2',
       icon: Users,
       gradient: 'from-green-500 to-emerald-600'
@@ -140,12 +168,7 @@ export default function AnalyticsPage({ onNavigate, onLogout }: AnalyticsPagePro
   }
 
   return (
-    <div className="min-h-screen bg-[#0B0F17] text-white">
-      <Header onNavigate={onNavigate} onLogout={onLogout} />
-      <div className="flex">
-        <Sidebar currentPage="analytics" onNavigate={onNavigate} />
-        
-        <main className="flex-1 p-8 ml-64">
+    <main className="flex-1 p-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -158,7 +181,7 @@ export default function AnalyticsPage({ onNavigate, onLogout }: AnalyticsPagePro
                 <h1 className="text-3xl mb-2 bg-gradient-to-r from-purple-400 to-teal-400 bg-clip-text text-transparent">
                   Analytics Dashboard
                 </h1>
-                <p className="text-gray-400">Track your team's productivity and performance</p>
+                <p className="text-gray-400">Track your team&apos;s productivity and performance</p>
               </div>
               
               <div className="flex items-center space-x-4">
@@ -352,8 +375,6 @@ export default function AnalyticsPage({ onNavigate, onLogout }: AnalyticsPagePro
               </motion.div>
             </div>
           </motion.div>
-        </main>
-      </div>
-    </div>
+    </main>
   );
 }
