@@ -1,11 +1,26 @@
 "use client"
 
 import TimerPage from '@/components/TimerPage'
+import { useRouter } from 'next/navigation'
 
 export default function Timer() {
-  return <TimerPage onNavigate={function (page: 'landing' | 'auth' | 'dashboard' | 'tasks' | 'timer' | 'profile'): void {
-      throw new Error('Function not implemented.')
-  } } onLogout={function (): void {
-      throw new Error('Function not implemented.')
-  } } />
+  const router = useRouter()
+
+  const handleNavigate = (page: 'landing' | 'analytics' | 'login' | 'dashboard' | 'tasks' | 'timer' | 'profile') => {
+    switch(page) {
+      case 'landing': router.push('/'); break
+      case 'analytics': router.push('/analytics'); break
+      case 'login': router.push('/login'); break
+      case 'dashboard': router.push('/dashboard'); break
+      case 'tasks': router.push('/tasks'); break
+      case 'timer': router.push('/timer'); break
+      case 'profile': router.push('/profile'); break
+    }
+  }
+
+  const handleLogout = () => {
+    router.push('/login')
+  }
+
+  return <TimerPage onNavigate={handleNavigate} onLogout={handleLogout} />
 }

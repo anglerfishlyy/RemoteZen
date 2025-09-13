@@ -8,7 +8,8 @@ import { Badge } from "./ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select"
 import { Avatar, AvatarFallback } from "./ui/avatar"
 import { Progress } from "./ui/progress"
-import { useAuth } from '@/app/providers'
+import { useAuth, useNotifications } from '@/app/providers'
+import { TIMER_CONFIG } from '@/lib/config'
 import { ImageWithFallback } from "./ImageWithFallback"
 import {
   Play,
@@ -35,24 +36,32 @@ interface TimerPageProps {
   onLogout: () => void
 }
 
-export default function TimerPage({ onNavigate, onLogout }: TimerPageProps) {
+export default function TimerPage({ onNavigate, onLogout: _onLogout }: TimerPageProps) {
   const { user } = useAuth()
+  const { addNotification } = useNotifications()
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
 
+  type ApiTask = { id: string; title: string }
+  type FocusLog = { id: string; startTime: string; endTime?: string | null; duration?: number | null }
+  type ActiveTimer = { id: string; startedAt: string; user: { id: string; name: string }; task: { id: string; title: string } }
+
   const [selectedTask, setSelectedTask] = useState<string>("")
-  const [currentTime, setCurrentTime] = useState(25 * 60)
+  const [currentTime, setCurrentTime] = useState(TIMER_CONFIG.FOCUS_DURATION)
   const [isRunning, setIsRunning] = useState(false)
   const [mode, setMode] = useState<"focus" | "break">("focus")
   const [sessionsCompleted, setSessionsCompleted] = useState(0)
   const [teamId, setTeamId] = useState<string>('')
   const [tasks, setTasks] = useState<Array<{id: string; title: string}>>([])
-  const [activeLogId, setActiveLogId] = useState<string>('')
+  const [, setActiveLogId] = useState<string>('')
+  const [currentTimerId, setCurrentTimerId] = useState<string>('')
+  const [activeTimers, setActiveTimers] = useState<ActiveTimer[]>([])
   const [todayStats, setTodayStats] = useState({ focusTime: '0m', sessions: 0, tasksCompleted: 0, productivity: 0 })
+  const [breakReminderTimeout, setBreakReminderTimeout] = useState<NodeJS.Timeout | null>(null)
 
-  const focusTime = 25 * 60
-  const breakTime = 5 * 60
+  const focusTime = TIMER_CONFIG.FOCUS_DURATION
+  const breakTime = TIMER_CONFIG.BREAK_DURATION
 
-  // Timer effect
+  // Timer effect - only runs when explicitly started by user
   useEffect(() => {
     let interval: NodeJS.Timeout
 
@@ -60,12 +69,27 @@ export default function TimerPage({ onNavigate, onLogout }: TimerPageProps) {
       interval = setInterval(() => {
         setCurrentTime((time) => time - 1)
       }, 1000)
-    } else if (currentTime === 0) {
+    } else if (currentTime === 0 && isRunning) {
+      // Only auto-complete if timer was actually running (not just paused)
       setIsRunning(false)
       if (mode === "focus") {
         setSessionsCompleted((prev) => prev + 1)
         setMode("break")
         setCurrentTime(breakTime)
+        // Trigger completion notification only when timer naturally completes
+        addNotification({
+          title: 'Focus Session Complete! 🎉',
+          body: 'Great work! Take a 5-minute break to recharge.'
+        })
+        
+        // Set break reminder after 5 minutes
+        const timeout = setTimeout(() => {
+          addNotification({
+            title: 'Break\'s Over! ⏰',
+            body: 'Time to get back to work. Start your next focus session.'
+          })
+        }, TIMER_CONFIG.BREAK_REMINDER_DELAY)
+        setBreakReminderTimeout(timeout)
       } else {
         setMode("focus")
         setCurrentTime(focusTime)
@@ -73,7 +97,7 @@ export default function TimerPage({ onNavigate, onLogout }: TimerPageProps) {
     }
 
     return () => clearInterval(interval)
-  }, [isRunning, currentTime, mode, focusTime, breakTime])
+  }, [isRunning, currentTime, mode, focusTime, breakTime, addNotification])
 
   // Load team, tasks, and current active focus log
   useEffect(() => {
@@ -82,26 +106,31 @@ export default function TimerPage({ onNavigate, onLogout }: TimerPageProps) {
     const load = async () => {
       try {
         const me = await fetch(`${API_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
-        const data = await me.json()
+        const data = (await me.json()) as { teams?: Array<{ id: string }> }
         const firstTeam = data.teams?.[0]
         if (firstTeam) {
           setTeamId(firstTeam.id)
           const taskRes = await fetch(`${API_URL}/tasks?teamId=${firstTeam.id}`, { headers: { Authorization: `Bearer ${token}` } })
-          const taskData = await taskRes.json()
-          setTasks((Array.isArray(taskData) ? taskData : []).map((t: any) => ({ id: t.id, title: t.title })))
+          const taskData = (await taskRes.json()) as unknown
+          const list = Array.isArray(taskData) ? (taskData as Array<Partial<ApiTask>>) : []
+          setTasks(list.filter((t): t is ApiTask => Boolean(t?.id && t?.title)).map((t) => ({ id: t.id!, title: t.title! })))
         }
 
         const logsRes = await fetch(`${API_URL}/focus`, { headers: { Authorization: `Bearer ${token}` } })
-        const logs = await logsRes.json()
-        const active = (Array.isArray(logs) ? logs : []).find((l: any) => !l.endTime)
+        const logsRaw = (await logsRes.json()) as unknown
+        const logs: Array<FocusLog> = Array.isArray(logsRaw)
+          ? (logsRaw as Array<Partial<FocusLog>>).filter((l): l is FocusLog => typeof l?.id === 'string' && typeof l?.startTime === 'string')
+          : []
+        const active = logs.find((l) => !l.endTime)
         if (active) {
           setActiveLogId(active.id)
-          setIsRunning(true)
+          // Don't auto-start the timer - let user manually start it
+          // setIsRunning(true)
         }
 
         const today = new Date().toDateString()
-        const todayLogs = (Array.isArray(logs) ? logs : []).filter((l: any) => new Date(l.startTime).toDateString() === today)
-        const totalSec = todayLogs.reduce((acc: number, l: any) => acc + (l.duration || 0), 0)
+        const todayLogs = logs.filter((l) => new Date(l.startTime).toDateString() === today)
+        const totalSec = todayLogs.reduce((acc: number, l) => acc + (l.duration || 0), 0)
         const hours = Math.floor(totalSec / 3600)
         const mins = Math.floor((totalSec % 3600) / 60)
         setTodayStats({ focusTime: `${hours > 0 ? hours + 'h ' : ''}${mins}m`, sessions: todayLogs.length, tasksCompleted: 0, productivity: Math.min(100, Math.round((totalSec / (4 * 3600)) * 100)) })
@@ -111,6 +140,50 @@ export default function TimerPage({ onNavigate, onLogout }: TimerPageProps) {
     }
     load()
   }, [API_URL, user])
+
+  // Fetch active timers for team and keep in sync; also detect my active timer
+  useEffect(() => {
+    const token = localStorage.getItem('token')
+    if (!token || !teamId) return
+    const fetchActive = async () => {
+      try {
+        const res = await fetch(`${API_URL}/focus/active?teamId=${teamId}`, { headers: { Authorization: `Bearer ${token}` } })
+        const data = (await res.json()) as unknown
+        const listRaw: Array<unknown> = Array.isArray(data) ? data as Array<unknown> : []
+        const list: ActiveTimer[] = listRaw.filter((t: unknown): t is ActiveTimer => {
+          if (typeof t !== 'object' || t === null) return false
+          const v = t as { id?: unknown; startedAt?: unknown; user?: unknown; task?: unknown }
+          const userVal = v.user as { id?: unknown; name?: unknown } | undefined
+          const taskVal = v.task as { id?: unknown; title?: unknown } | undefined
+          return (
+            typeof v.id === 'string' &&
+            typeof v.startedAt === 'string' &&
+            !!userVal && typeof userVal.id === 'string' && typeof userVal.name === 'string' &&
+            !!taskVal && typeof taskVal.id === 'string' && typeof taskVal.title === 'string'
+          )
+        })
+        setActiveTimers(list)
+        const mine = list.find((t) => t.user.id === user?.id)
+        if (mine) {
+          // Don't auto-start the timer - let user manually start it
+          // setIsRunning(true)
+          setCurrentTimerId(mine.id)
+        }
+      } catch (e) { console.error(e) }
+    }
+    fetchActive()
+    const interval = setInterval(fetchActive, 10000)
+    return () => clearInterval(interval)
+  }, [API_URL, teamId, user?.id])
+
+  // Cleanup break reminder timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (breakReminderTimeout) {
+        clearTimeout(breakReminderTimeout)
+      }
+    }
+  }, [breakReminderTimeout])
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
@@ -127,44 +200,116 @@ export default function TimerPage({ onNavigate, onLogout }: TimerPageProps) {
     const token = localStorage.getItem('token')
     if (!token) return
     try {
-      if (!selectedTask || selectedTask === 'no') return
+      if (!selectedTask || selectedTask === 'no') {
+        addNotification({
+          title: 'Task Required',
+          body: 'Please select a task before starting the timer.'
+        })
+        return
+      }
       const res = await fetch(`${API_URL}/focus/start`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ taskId: selectedTask }) })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data?.error || 'Failed to start focus')
-      setActiveLogId(data.id)
+      const data = (await res.json()) as { id: string } | { error: string }
+      if (!res.ok) throw new Error((data as { error?: string }).error || 'Failed to start focus')
+      if ('id' in data) {
+        setCurrentTimerId(data.id)
+      }
       setIsRunning(true)
-    } catch (e) { console.error(e) }
+      // refresh active timers list
+      if (teamId) {
+        try {
+          const res2 = await fetch(`${API_URL}/focus/active?teamId=${teamId}`, { headers: { Authorization: `Bearer ${token}` } })
+          const list = (await res2.json()) as unknown
+          setActiveTimers(Array.isArray(list) ? (list as ActiveTimer[]) : [])
+        } catch {}
+      }
+    } catch (e) { 
+      console.error(e)
+      addNotification({
+        title: 'Timer Error',
+        body: 'Failed to start focus session. Please try again.'
+      })
+    }
   }
 
-  const endFocus = async () => {
+  const endFocus = async (isPause = false) => {
     const token = localStorage.getItem('token')
-    if (!token || !activeLogId) return
+    if (!token) return
     try {
-      const res = await fetch(`${API_URL}/focus/end`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ logId: activeLogId }) })
+      const body: Record<string, string> = currentTimerId ? { timerId: currentTimerId } : {}
+      const res = await fetch(`${API_URL}/focus/end`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(body) })
       const data = await res.json()
-      if (!res.ok) throw new Error(data?.error || 'Failed to end focus')
+      if (!res.ok) {
+        // If no active timer found, just stop the UI timer gracefully
+        if (data?.error?.includes('Active timer not found')) {
+          setIsRunning(false)
+          setCurrentTimerId('')
+          return
+        }
+        throw new Error(data?.error || 'Failed to end focus')
+      }
       setIsRunning(false)
-      setActiveLogId('')
-    } catch (e) { console.error(e) }
+      setCurrentTimerId('')
+      
+      // Only send notifications if this is a natural completion (not a pause)
+      if (!isPause) {
+        // Send focus completion notification
+        addNotification({
+          title: 'Focus Session Complete! 🎉',
+          body: 'Great work! Take a 5-minute break to recharge.'
+        })
+        
+        // Set break reminder after 5 minutes
+        const timeout = setTimeout(() => {
+          addNotification({
+            title: 'Break\'s Over! ⏰',
+            body: 'Time to get back to work. Start your next focus session.'
+          })
+        }, TIMER_CONFIG.BREAK_REMINDER_DELAY)
+        setBreakReminderTimeout(timeout)
+      }
+      
+      // refresh active timers list
+      if (teamId) {
+        try {
+          const res2 = await fetch(`${API_URL}/focus/active?teamId=${teamId}`, { headers: { Authorization: `Bearer ${token}` } })
+          const list = (await res2.json()) as unknown
+          setActiveTimers(Array.isArray(list) ? (list as ActiveTimer[]) : [])
+        } catch {}
+      }
+    } catch (e) { 
+      console.error(e)
+      // Gracefully handle errors - just stop the UI timer
+      setIsRunning(false)
+      setCurrentTimerId('')
+    }
   }
 
   // Merge handlers (removed duplicates)
   const handleStart = () => {
-    if (!activeLogId) startFocus();
-    setIsRunning(true);
+    if (isRunning || currentTimerId) return
+    // Only start running after backend confirms timer creation
+    startFocus();
   }
 
   const handlePause = () => {
     setIsRunning(false);
-    if (activeLogId) endFocus();
+    endFocus(true); // Pass true to indicate this is a pause, not completion
   }
 
   const handleReset = () => {
     setIsRunning(false);
     setCurrentTime(mode === 'focus' ? focusTime : breakTime);
+    // Reset doesn't trigger notifications - just resets the timer
   }
 
-  const activeTimers: Array<{ user: { name: string, avatar: string }, task: string, time: string, status: 'focus' | 'break' }> = []
+  const formatSince = (iso: string) => {
+    const started = new Date(iso).getTime()
+    const now = Date.now()
+    const sec = Math.max(0, Math.floor((now - started) / 1000))
+    const m = Math.floor(sec / 60)
+    const s = sec % 60
+    return `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`
+  }
 
   return (
     <div className="flex flex-col overflow-hidden">
@@ -321,7 +466,8 @@ export default function TimerPage({ onNavigate, onLogout }: TimerPageProps) {
                           <Button
                             size="lg"
                             onClick={handleStart}
-                            className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white border-0 px-8"
+                            disabled={!selectedTask || selectedTask === 'no'}
+                            className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white border-0 px-8 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             <Play className="w-6 h-6 mr-2" />
                             Start Focus
@@ -408,7 +554,7 @@ export default function TimerPage({ onNavigate, onLogout }: TimerPageProps) {
                   <CardHeader>
                     <CardTitle className="text-white flex items-center">
                       <TrendingUp className="w-5 h-5 mr-2" />
-                      Today's Progress
+                      Today&rsquo;s Progress
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -460,37 +606,33 @@ export default function TimerPage({ onNavigate, onLogout }: TimerPageProps) {
                       Team Focus Sessions
                     </CardTitle>
                     <CardDescription className="text-gray-400">
-                      See who's currently focused
+                      See who&rsquo;s currently focused
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    {activeTimers.map((timer, index) => (
-                      <div key={index} className="flex items-center space-x-3 p-3 rounded-lg bg-white/5">
+                    {activeTimers.map((timer) => (
+                      <div key={timer.id} className="flex items-center space-x-3 p-3 rounded-lg bg-white/5">
                         <div className="relative">
                           <Avatar className="w-10 h-10">
                             <AvatarFallback className="bg-gradient-to-br from-blue-400 to-purple-600 text-white text-sm">
-                              {timer.user.avatar}
+                              {timer.user.name?.slice(0,2).toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
                           <div className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-black ${
-                            timer.status === 'focus' ? 'bg-blue-400' : 'bg-green-400'
+                            'bg-blue-400'
                           }`} />
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-white text-sm font-medium truncate">{timer.user.name}</p>
-                          <p className="text-gray-400 text-xs truncate">{timer.task}</p>
+                          <p className="text-gray-400 text-xs truncate">{timer.task.title}</p>
                         </div>
                         <div className="text-right">
-                          <p className="text-white text-sm font-mono">{timer.time}</p>
+                          <p className="text-white text-sm font-mono">{formatSince(timer.startedAt)}</p>
                           <Badge 
                             variant="outline" 
-                            className={`text-xs ${
-                              timer.status === 'focus' 
-                                ? 'border-blue-500/50 text-blue-400' 
-                                : 'border-green-500/50 text-green-400'
-                            }`}
+                            className={`text-xs border-blue-500/50 text-blue-400`}
                           >
-                            {timer.status}
+                            focus
                           </Badge>
                         </div>
                       </div>
