@@ -7,10 +7,13 @@ import { AuthGuard } from "@/components/AuthGuard";
 export default function Tasks() {
   const router = useRouter();
 
-  const handleNavigate = (page: 'landing' | 'login' | 'dashboard' | 'tasks' | 'timer' | 'profile') => {
+  const handleNavigate = (page: 'landing' | 'analytics' | 'login' | 'dashboard' | 'tasks' | 'timer' | 'profile') => {
     switch (page) {
       case "dashboard":
         router.push("/dashboard");
+        break;
+      case "analytics":
+        router.push("/analytics");
         break;
       case "tasks":
         router.push("/tasks");

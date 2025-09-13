@@ -1,21 +1,20 @@
 "use client"
 
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from "framer-motion"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { Badge } from './ui/badge';
 import { Progress } from './ui/progress';
-import DashboardLayout from './DashboardLayout';
+import { useAuth } from '@/app/providers';
+import { PRODUCTIVITY_CONFIG, UI_CONFIG } from '@/lib/config';
 import { 
   Plus, 
-  Clock, 
   CheckSquare, 
   Users, 
   TrendingUp, 
   Timer, 
-  Calendar,
   Target,
   Zap,
   Play,
@@ -30,45 +29,100 @@ interface DashboardProps {
   onLogout: () => void;
 }
 
-export default function Dashboard({ onNavigate, onLogout }: DashboardProps) {
-  const tasks = [
-    { id: 1, title: "Design new landing page", status: "in-progress", priority: "high", timeSpent: "2h 30m", assignee: "You" },
-    { id: 2, title: "Review API documentation", status: "pending", priority: "medium", timeSpent: "0m", assignee: "Sarah M." },
-    { id: 3, title: "Fix authentication bug", status: "in-progress", priority: "high", timeSpent: "1h 15m", assignee: "Mike R." },
-    { id: 4, title: "Update user dashboard", status: "completed", priority: "low", timeSpent: "45m", assignee: "You" },
-  ];
+export default function Dashboard({ onNavigate, onLogout: _onLogout }: DashboardProps) {
+  const { user } = useAuth()
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
 
-  const teamMembers = [
-    { name: "Sarah Martinez", status: "Working on API Review", time: "1h 23m", avatar: "SM", online: true },
-    { name: "Mike Rodriguez", status: "Debugging Auth Issues", time: "2h 45m", avatar: "MR", online: true },
-    { name: "Emily Chen", status: "Away", time: "0m", avatar: "EC", online: false },
-    { name: "David Kim", status: "In Meeting", time: "30m", avatar: "DK", online: true },
-  ];
+  type ApiTask = { id: string; title: string; status?: 'PENDING'|'IN_PROGRESS'|'DONE'; teamId: string; assignedToId?: string|null }
+  type ActiveTimer = { id: string; startedAt: string; user: { id: string; name: string }; task: { id: string; title: string } }
+  type Productivity = { totalFocusSeconds: number; tasksCompleted: number; avgFocusPerUser: number }
+
+  const [teamId, setTeamId] = useState<string>('')
+  const [tasks, setTasks] = useState<ApiTask[]>([])
+  const [activeTimers, setActiveTimers] = useState<ActiveTimer[]>([])
+  const [productivity, setProductivity] = useState<Productivity | null>(null)
+
+  // bootstrap: load team, tasks, analytics
+  useEffect(() => {
+    const token = localStorage.getItem('token')
+    if (!token || !user) return
+    const initialize = async () => {
+      try {
+        const meRes = await fetch(`${API_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
+        const me = await meRes.json()
+        const firstTeam = me?.teams?.[0]
+        if (!firstTeam) return
+        setTeamId(firstTeam.id)
+
+        const tRes = await fetch(`${API_URL}/tasks?teamId=${firstTeam.id}`, { headers: { Authorization: `Bearer ${token}` } })
+        const tData = await tRes.json()
+        setTasks(Array.isArray(tData) ? tData : [])
+
+        const now = new Date();
+        const weekAgo = new Date(now.getTime() - 7*24*60*60*1000);
+        const pRes = await fetch(`${API_URL}/analytics/productivity?teamId=${firstTeam.id}&from=${weekAgo.toISOString()}&to=${now.toISOString()}`, { headers: { Authorization: `Bearer ${token}` } })
+        if (pRes.ok) {
+          const p = await pRes.json()
+          setProductivity(p)
+        }
+      } catch (e) { console.error(e) }
+    }
+    initialize()
+  }, [API_URL, user])
+
+  // poll active timers and refresh tasks periodically
+  useEffect(() => {
+    const token = localStorage.getItem('token')
+    if (!token || !teamId) return
+    const refresh = async () => {
+      try {
+        const aRes = await fetch(`${API_URL}/focus/active?teamId=${teamId}`, { headers: { Authorization: `Bearer ${token}` } })
+        const a = await aRes.json()
+        setActiveTimers(Array.isArray(a) ? a : [])
+
+        const tRes = await fetch(`${API_URL}/tasks?teamId=${teamId}`, { headers: { Authorization: `Bearer ${token}` } })
+        const tData = await tRes.json()
+        setTasks(Array.isArray(tData) ? tData : [])
+      } catch (e) { console.error(e) }
+    }
+    refresh()
+    const interval = setInterval(refresh, UI_CONFIG.POLLING_INTERVAL)
+    return () => clearInterval(interval)
+  }, [API_URL, teamId])
+
+  const myFirstName = useMemo(() => (user?.name || '').split(' ')[0] || 'there', [user?.name])
+  const totalTasks = tasks.length
+  const tasksCompleted = tasks.filter(t => t.status === 'DONE').length
+  const activeTimersCount = activeTimers.length
+  const totalFocusHuman = useMemo(() => {
+    const s = productivity?.totalFocusSeconds || 0
+    const h = Math.floor(s/3600); const m = Math.floor((s%3600)/60)
+    return `${h > 0 ? h + 'h ' : ''}${m}m`
+  }, [productivity])
 
   const stats = [
-    { label: "Tasks Completed", value: "12", change: "+3 from yesterday", icon: CheckSquare, color: "from-green-500 to-emerald-600" },
-    { label: "Focus Time", value: "6h 42m", change: "+1h 15m from yesterday", icon: Timer, color: "from-blue-500 to-cyan-600" },
-    { label: "Team Productivity", value: "94%", change: "+5% from last week", icon: TrendingUp, color: "from-purple-500 to-pink-600" },
-    { label: "Active Projects", value: "8", change: "+2 new projects", icon: Target, color: "from-orange-500 to-red-600" },
+    { label: "Total Tasks", value: String(totalTasks), change: `${tasksCompleted} completed`, icon: CheckSquare, color: "from-green-500 to-emerald-600" },
+    { label: "Active Timers", value: String(activeTimersCount), change: "live", icon: Timer, color: "from-blue-500 to-cyan-600" },
+    { label: "Focus Time (7d)", value: totalFocusHuman, change: productivity ? `Avg/user ${Math.round((productivity.avgFocusPerUser||0)/60)}m` : '—', icon: TrendingUp, color: "from-purple-500 to-pink-600" },
+    { label: "Completed", value: String(tasksCompleted), change: "this team", icon: Target, color: "from-orange-500 to-red-600" },
   ];
 
   return (
-    <DashboardLayout currentPage="dashboard" onNavigate={onNavigate} onLogout={onLogout}>
-      {/* Header */}
-      <header className="bg-black/40 backdrop-blur-xl border-b border-white/10 px-6 py-4">
+    <>
+      {/* Page Title + CTAs (under the fixed header) */}
+      <div className="px-6 pt-2 pb-4">
         <div className="flex items-center justify-between">
           <div>
             <motion.h1 
-              initial={{ opacity: 0, y: -10 }}
+              initial={{ opacity: 0, y: -6 }}
               animate={{ opacity: 1, y: 0 }}
               className="text-2xl font-bold text-white"
             >
-              Good evening, John 👋
+              Welcome back, {myFirstName} 👋
             </motion.h1>
-            <p className="text-gray-400 mt-1">Here's what's happening with your projects today.</p>
+            <p className="text-gray-400 mt-1">Live view of your team’s tasks and focus.</p>
           </div>
-          
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-3">
             <Button 
               onClick={() => onNavigate('tasks')}
               className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white border-0"
@@ -77,19 +131,27 @@ export default function Dashboard({ onNavigate, onLogout }: DashboardProps) {
               New Task
             </Button>
             <Button 
-              onClick={() => onNavigate('timer')}
+              onClick={() => {
+                if (tasks.length === 0) {
+                  // Navigate to tasks page if no tasks available
+                  onNavigate('tasks')
+                } else {
+                  // Navigate to timer page
+                  onNavigate('timer')
+                }
+              }}
               variant="outline"
               className="border-white/20 text-white hover:bg-white/10"
             >
               <Play className="w-4 h-4 mr-2" />
-              Start Timer
+              {tasks.length === 0 ? 'Create Task First' : 'Start Timer'}
             </Button>
           </div>
         </div>
-      </header>
+      </div>
 
       {/* Main Content */}
-      <main className="p-6">
+      <main className="px-6 pb-6">
         <div className="max-w-7xl mx-auto space-y-6">
             {/* Stats Grid */}
             <motion.div 
@@ -136,7 +198,7 @@ export default function Dashboard({ onNavigate, onLogout }: DashboardProps) {
                     <div>
                       <CardTitle className="text-white">My Tasks</CardTitle>
                       <CardDescription className="text-gray-400">
-                        Your active and recent tasks
+                        Your team’s recent tasks
                       </CardDescription>
                     </div>
                     <Button 
@@ -149,36 +211,24 @@ export default function Dashboard({ onNavigate, onLogout }: DashboardProps) {
                     </Button>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    {tasks.map((task) => (
+                    {tasks.slice(0,8).map((task) => (
                       <div key={task.id} className="flex items-center justify-between p-4 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
                         <div className="flex items-center space-x-4 flex-1">
                           <div className={`w-3 h-3 rounded-full ${
-                            task.status === 'completed' ? 'bg-green-400' :
-                            task.status === 'in-progress' ? 'bg-blue-400' : 'bg-gray-400'
+                            task.status === 'DONE' ? 'bg-green-400' :
+                            task.status === 'IN_PROGRESS' ? 'bg-blue-400' : 'bg-gray-400'
                           }`} />
                           <div className="flex-1">
                             <h4 className="text-white font-medium">{task.title}</h4>
                             <div className="flex items-center space-x-4 mt-1">
-                              <Badge 
-                                variant="outline" 
-                                className={`text-xs ${
-                                  task.priority === 'high' ? 'border-red-500/50 text-red-400' :
-                                  task.priority === 'medium' ? 'border-yellow-500/50 text-yellow-400' :
-                                  'border-gray-500/50 text-gray-400'
-                                }`}
-                              >
-                                {task.priority}
+                              <Badge variant="outline" className="text-xs border-white/20 text-gray-300">
+                                {task.status?.replace('_',' ') || 'PENDING'}
                               </Badge>
-                              <span className="text-sm text-gray-400">{task.assignee}</span>
-                              <span className="text-sm text-gray-400 flex items-center">
-                                <Clock className="w-3 h-3 mr-1" />
-                                {task.timeSpent}
-                              </span>
                             </div>
                           </div>
                         </div>
                         <div className="flex items-center space-x-2">
-                          {task.status === 'in-progress' && (
+                          {task.status === 'IN_PROGRESS' && (
                             <Button size="sm" variant="ghost" className="text-blue-400 hover:text-blue-300">
                               <Pause className="w-4 h-4" />
                             </Button>
@@ -208,28 +258,28 @@ export default function Dashboard({ onNavigate, onLogout }: DashboardProps) {
                       Team Activity
                     </CardTitle>
                     <CardDescription className="text-gray-400">
-                      See what your team is working on
+                      Live focus sessions right now
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    {teamMembers.map((member, index) => (
-                      <div key={index} className="flex items-center space-x-3">
+                    {activeTimers.map((t) => (
+                      <div key={t.id} className="flex items-center space-x-3">
                         <div className="relative">
                           <Avatar className="w-10 h-10">
                             <AvatarFallback className="bg-gradient-to-br from-blue-400 to-purple-600 text-white text-sm">
-                              {member.avatar}
+                              {t.user.name?.slice(0,2).toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
                           <div className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-black ${
-                            member.online ? 'bg-green-400' : 'bg-gray-400'
+                            'bg-green-400'
                           }`} />
                         </div>
                         <div className="flex-1">
-                          <p className="text-white text-sm font-medium">{member.name}</p>
-                          <p className="text-gray-400 text-xs">{member.status}</p>
+                          <p className="text-white text-sm font-medium">{t.user.name}</p>
+                          <p className="text-gray-400 text-xs">{t.task.title}</p>
                         </div>
                         <div className="text-right">
-                          <p className="text-gray-400 text-xs">{member.time}</p>
+                          <p className="text-gray-400 text-xs">active</p>
                         </div>
                       </div>
                     ))}
@@ -244,32 +294,32 @@ export default function Dashboard({ onNavigate, onLogout }: DashboardProps) {
                       Weekly Focus
                     </CardTitle>
                     <CardDescription className="text-gray-400">
-                      Your progress this week
+                      Team productivity (past 7 days)
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div>
                       <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm text-gray-300">Focus Time Goal</span>
-                        <span className="text-sm text-white">32h / 40h</span>
+                        <span className="text-sm text-gray-300">Total Focus Time</span>
+                        <span className="text-sm text-white">{totalFocusHuman}</span>
                       </div>
-                      <Progress value={80} className="h-2" />
+                      <Progress value={Math.min(100, Math.round(((productivity?.totalFocusSeconds||0) / PRODUCTIVITY_CONFIG.WEEKLY_FOCUS_TARGET) * 100))} className="h-2" />
                     </div>
                     
                     <div>
                       <div className="flex justify-between items-center mb-2">
                         <span className="text-sm text-gray-300">Tasks Completed</span>
-                        <span className="text-sm text-white">18 / 25</span>
+                        <span className="text-sm text-white">{tasksCompleted}</span>
                       </div>
-                      <Progress value={72} className="h-2" />
+                      <Progress value={totalTasks ? Math.round((tasksCompleted/totalTasks)*100) : 0} className="h-2" />
                     </div>
 
                     <div className="pt-4 border-t border-white/10">
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-400">Streak</span>
+                        <span className="text-gray-400">Active Timers</span>
                         <div className="flex items-center text-orange-400">
                           <Zap className="w-4 h-4 mr-1" />
-                          <span className="font-medium">7 days</span>
+                          <span className="font-medium">{activeTimersCount}</span>
                         </div>
                       </div>
                     </div>
@@ -279,6 +329,6 @@ export default function Dashboard({ onNavigate, onLogout }: DashboardProps) {
             </div>
         </div>
       </main>
-    </DashboardLayout>
+    </>
   );
 }

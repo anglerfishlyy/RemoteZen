@@ -121,7 +121,57 @@ export function Providers({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider value={{ isAuthenticated, user, login, signup, logout }}>
-      {children}
+      <NotificationsProvider>
+        {children}
+      </NotificationsProvider>
     </AuthContext.Provider>
+  )
+}
+
+// Notifications context
+type AppNotification = { id: string; title: string; body?: string; createdAt: number; read?: boolean }
+
+interface NotificationsContextType {
+  notifications: AppNotification[]
+  unreadCount: number
+  addNotification: (n: Omit<AppNotification, 'id' | 'createdAt' | 'read'>) => void
+  markAllRead: () => void
+}
+
+const NotificationsContext = createContext<NotificationsContextType | undefined>(undefined)
+
+export function useNotifications() {
+  const ctx = useContext(NotificationsContext)
+  if (!ctx) throw new Error('useNotifications must be used within NotificationsProvider')
+  return ctx
+}
+
+function NotificationsProvider({ children }: { children: ReactNode }) {
+  const [notifications, setNotifications] = useState<AppNotification[]>([])
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('Notification' in window)) return
+    if (Notification.permission === 'default') {
+      Notification.requestPermission().catch(() => {})
+    }
+  }, [])
+
+  const addNotification: NotificationsContextType['addNotification'] = ({ title, body }) => {
+    const entry: AppNotification = { id: crypto.randomUUID(), title, body, createdAt: Date.now(), read: false }
+    setNotifications(prev => [entry, ...prev].slice(0, 100))
+    try {
+      if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+        new Notification(title, { body })
+      }
+    } catch {}
+  }
+
+  const markAllRead = () => setNotifications(prev => prev.map(n => ({ ...n, read: true })))
+  const unreadCount = notifications.reduce((acc, n) => acc + (n.read ? 0 : 1), 0)
+
+  return (
+    <NotificationsContext.Provider value={{ notifications, unreadCount, addNotification, markAllRead }}>
+      {children}
+    </NotificationsContext.Provider>
   )
 }
