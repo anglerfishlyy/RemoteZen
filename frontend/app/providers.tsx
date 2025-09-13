@@ -11,6 +11,7 @@ interface User {
 interface AuthContextType {
   isAuthenticated: boolean
   user: User | null
+  setUser: (user: User | null) => void
   login: (email: string, password: string) => Promise<void>
   signup: (name: string, email: string, password: string) => Promise<void>
   logout: () => void
@@ -120,7 +121,7 @@ export function Providers({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, user, login, signup, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, user, setUser, login, signup, logout }}>
       <NotificationsProvider>
         {children}
       </NotificationsProvider>

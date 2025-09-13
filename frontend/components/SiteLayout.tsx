@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import Header from './Header';
 import Sidebar from './Sidebar';
 import { AuthGuard } from './AuthGuard';
+import FeedbackButton from './FeedbackButton';
 
 // Pages within the dashboard shell
 const SHELL_PAGES = new Set(['/dashboard', '/tasks', '/timer', '/analytics', '/teams', '/profile', '/notifications']);
@@ -56,6 +57,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }){
             {children}
           </main>
         </div>
+        <FeedbackButton />
       </div>
     </AuthGuard>
   );

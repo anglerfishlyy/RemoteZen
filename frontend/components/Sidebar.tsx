@@ -5,12 +5,13 @@ import { Button } from './ui/button'
 import { useAuth, useNotifications } from '@/app/providers'
 import { PRODUCTIVITY_CONFIG } from '@/lib/config'
 import { Badge } from './ui/badge'
+import QuickTaskModal from './QuickTaskModal'
+import QuickTimerModal from './QuickTimerModal'
 import { 
   BarChart3, 
   CheckSquare, 
   Timer, 
   User, 
-  Settings,
   Bell,
   Zap,
   ChevronRight,
@@ -24,18 +25,7 @@ const navigationItems = [
   { title: 'Analytics', href: '/analytics', page: 'analytics', icon: TrendingUp, badge: null },
 ]
 
-const quickActions = [
-  {
-    title: 'Quick Task',
-    icon: Zap,
-    action: () => console.log('Quick task')
-  },
-  {
-    title: 'Start Timer',
-    icon: Timer,
-    action: () => console.log('Start timer')
-  }
-]
+// Quick actions will be defined in the component to access state
 
 // Updated to match your main App component's type
 type NavigateFunction = (page: 'landing' | 'login' | 'dashboard' | 'tasks' | 'timer' | 'analytics' | 'profile' | 'teams' | 'notifications') => void;
@@ -53,6 +43,23 @@ export default function Sidebar({ currentPage, onNavigate, collapsed = false }: 
   const [, setTeamId] = useState<string>('')
   const [todayFocusMin, setTodayFocusMin] = useState<number>(0)
   const [tasksCompleted, setTasksCompleted] = useState<number>(0)
+  
+  // Modal states
+  const [isQuickTaskOpen, setIsQuickTaskOpen] = useState(false)
+  const [isQuickTimerOpen, setIsQuickTimerOpen] = useState(false)
+
+  const quickActions = [
+    {
+      title: 'Quick Task',
+      icon: Zap,
+      action: () => setIsQuickTaskOpen(true)
+    },
+    {
+      title: 'Start Timer',
+      icon: Timer,
+      action: () => setIsQuickTimerOpen(true)
+    }
+  ]
 
   useEffect(() => {
     const token = localStorage.getItem('token')
@@ -185,14 +192,6 @@ export default function Sidebar({ currentPage, onNavigate, collapsed = false }: 
           </Button>
           <Button
             variant="ghost"
-            className={`w-full justify-start text-gray-300 hover:text-white hover:bg-white/20 transition-all duration-300 rounded-lg ${collapsed ? 'px-2' : ''}`}
-            onClick={() => onNavigate('analytics')}
-          >
-            <Settings className={`w-4 h-4 ${collapsed ? '' : 'mr-3'}`} />
-            {!collapsed && 'Settings'}
-          </Button>
-          <Button
-            variant="ghost"
             className={`w-full justify-start text-gray-300 hover:text-white hover:bg-white/20 transition-all duration-300 relative rounded-lg ${collapsed ? 'px-2' : ''}`}
             onClick={() => onNavigate('notifications')}
           >
@@ -204,6 +203,16 @@ export default function Sidebar({ currentPage, onNavigate, collapsed = false }: 
           </Button>
         </div>
       </div>
+      
+      {/* Modals */}
+      <QuickTaskModal 
+        isOpen={isQuickTaskOpen} 
+        onClose={() => setIsQuickTaskOpen(false)} 
+      />
+      <QuickTimerModal 
+        isOpen={isQuickTimerOpen} 
+        onClose={() => setIsQuickTimerOpen(false)} 
+      />
     </aside>
   )
 }

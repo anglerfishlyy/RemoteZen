@@ -13,10 +13,12 @@ import { motion } from 'framer-motion'
 import { User, Bell, Moon, Sun, Shield, Trash2, Save } from 'lucide-react'
 
 export default function ProfileSettings() {
-  const { logout } = useAuth()
+  const { logout, setUser } = useAuth()
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
+  const [role, setRole] = useState('')
+  const [createdAt, setCreatedAt] = useState('')
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
   const [activeTab, setActiveTab] = useState<'profile' | 'preferences' | 'security'>('profile')
@@ -27,31 +29,100 @@ export default function ProfileSettings() {
   const [autoStartBreaks, setAutoStartBreaks] = useState(false)
   const [focusSounds, setFocusSounds] = useState(true)
 
+  // Password change state
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+
   useEffect(() => {
     const token = localStorage.getItem('token')
     if (!token) return
     const load = async () => {
-      const res = await fetch(`${API_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
-      const data = await res.json()
-      if (data?.user) {
-        setName(data.user.name || '')
-        setEmail(data.user.email || '')
+      try {
+        const res = await fetch(`${API_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
+        const data = await res.json()
+        if (data?.user) {
+          setName(data.user.name || '')
+          setEmail(data.user.email || '')
+          setRole(data.user.role || 'MEMBER')
+          setCreatedAt(data.user.createdAt || '')
+        }
+      } catch (error) {
+        console.error('Failed to load user data:', error)
       }
     }
     load()
   }, [API_URL])
 
-  const save = async () => {
+  const saveProfile = async () => {
     const token = localStorage.getItem('token')
     if (!token) return
     try {
       setSaving(true)
       setMessage('')
-      // backend currently has no PUT /auth/me; keep UI ready, simulate success
-      await new Promise(r => setTimeout(r, 500))
-      setMessage('Saved!')
-    } catch {
-      setMessage('Failed to save')
+      
+      const response = await fetch(`${API_URL}/auth/me`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ name })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        if (data?.user) {
+          setUser(data.user)
+          setMessage('Profile updated successfully!')
+        }
+      } else {
+        const error = await response.json()
+        setMessage(error.error || 'Failed to update profile')
+      }
+    } catch (error) {
+      console.error('Error updating profile:', error)
+      setMessage('Failed to update profile')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const savePassword = async () => {
+    if (newPassword !== confirmPassword) {
+      setMessage('Passwords do not match')
+      return
+    }
+    if (newPassword.length < 6) {
+      setMessage('Password must be at least 6 characters')
+      return
+    }
+
+    const token = localStorage.getItem('token')
+    if (!token) return
+    try {
+      setSaving(true)
+      setMessage('')
+      
+      const response = await fetch(`${API_URL}/auth/me`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ password: newPassword })
+      })
+
+      if (response.ok) {
+        setMessage('Password updated successfully!')
+        setNewPassword('')
+        setConfirmPassword('')
+      } else {
+        const error = await response.json()
+        setMessage(error.error || 'Failed to update password')
+      }
+    } catch (error) {
+      console.error('Error updating password:', error)
+      setMessage('Failed to update password')
     } finally {
       setSaving(false)
     }
@@ -148,23 +219,41 @@ export default function ProfileSettings() {
                       <Label className="text-gray-300">Email</Label>
                       <Input 
                         value={email} 
-                        onChange={e => setEmail(e.target.value)} 
-                        className="bg-white/5 border-white/10 text-white mt-1" 
-                        placeholder="Enter your email"
+                        className="bg-white/5 border-white/10 text-gray-400 mt-1 cursor-not-allowed" 
+                        disabled
                         type="email"
                       />
+                      <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
+                    </div>
+                    <div>
+                      <Label className="text-gray-300">Role</Label>
+                      <div className="mt-1">
+                        <Badge variant="outline" className="border-blue-500/50 text-blue-400">
+                          {role}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-gray-300">Member Since</Label>
+                      <p className="text-gray-400 mt-1">
+                        {createdAt ? new Date(createdAt).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        }) : 'Unknown'}
+                      </p>
                     </div>
                     <div className="flex items-center gap-3 pt-4">
                       <Button 
-                        onClick={save} 
-                        disabled={saving} 
+                        onClick={saveProfile} 
+                        disabled={saving || !name.trim()} 
                         className="bg-gradient-to-r from-blue-500 to-purple-600 text-white"
                       >
                         <Save className="w-4 h-4 mr-2" />
                         {saving ? 'Saving...' : 'Save changes'}
                       </Button>
                       {message && (
-                        <Badge variant="outline" className="border-green-500/50 text-green-400">
+                        <Badge variant="outline" className={message.includes('success') ? "border-green-500/50 text-green-400" : "border-red-500/50 text-red-400"}>
                           {message}
                         </Badge>
                       )}
@@ -263,9 +352,30 @@ export default function ProfileSettings() {
                     <div>
                       <Label className="text-gray-300">Change Password</Label>
                       <p className="text-sm text-gray-400 mb-3">Update your password to keep your account secure</p>
-                      <Button variant="outline" className="border-white/20 text-white hover:bg-white/10">
-                        Change Password
-                      </Button>
+                      <div className="space-y-3">
+                        <Input 
+                          type="password"
+                          placeholder="New password"
+                          value={newPassword}
+                          onChange={e => setNewPassword(e.target.value)}
+                          className="bg-white/5 border-white/10 text-white"
+                        />
+                        <Input 
+                          type="password"
+                          placeholder="Confirm new password"
+                          value={confirmPassword}
+                          onChange={e => setConfirmPassword(e.target.value)}
+                          className="bg-white/5 border-white/10 text-white"
+                        />
+                        <Button 
+                          onClick={savePassword}
+                          disabled={saving || !newPassword || !confirmPassword}
+                          className="bg-gradient-to-r from-blue-500 to-purple-600 text-white"
+                        >
+                          <Save className="w-4 h-4 mr-2" />
+                          {saving ? 'Updating...' : 'Update Password'}
+                        </Button>
+                      </div>
                     </div>
                     <Separator className="bg-white/10" />
                     <div>

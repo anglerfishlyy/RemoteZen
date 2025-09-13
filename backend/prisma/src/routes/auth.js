@@ -123,10 +123,58 @@ router.get("/me", async (req, res) => {
     }
 
     return res.status(200).json({
-      user: { id: user.id, email: user.email, name: user.name },
+      user: { id: user.id, email: user.email, name: user.name, role: user.role, createdAt: user.createdAt },
       teams: mapTeams(user.teams),
     });
   } catch (error) {
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// PATCH /auth/me - Update user profile
+router.patch("/me", async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
+    if (!token) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (e) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const { name, password } = req.body;
+    const updateData = {};
+
+    if (name && name.trim()) {
+      updateData.name = name.trim();
+    }
+
+    if (password && password.trim()) {
+      if (password.length < 6) {
+        return res.status(400).json({ error: "Password must be at least 6 characters" });
+      }
+      updateData.passwordHash = await bcrypt.hash(password, 10);
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({ error: "No valid fields to update" });
+    }
+
+    const user = await prisma.user.update({
+      where: { id: decoded.id },
+      data: updateData,
+      include: { teams: { include: { team: true } } }
+    });
+
+    return res.status(200).json({
+      user: { id: user.id, email: user.email, name: user.name, role: user.role, createdAt: user.createdAt },
+      teams: mapTeams(user.teams),
+    });
+  } catch (error) {
+    console.error("Error updating user:", error);
     return res.status(500).json({ error: "Internal server error" });
   }
 });
