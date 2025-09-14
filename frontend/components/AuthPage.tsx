@@ -23,7 +23,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/app/providers'
 
-type NavigateFunction = (page: 'landing' |'analytics'| 'login' | 'dashboard' | 'tasks' | 'timer' | 'profile') => void;
+type NavigateFunction = (page: 'landing' | 'analytics' | 'login' | 'dashboard' | 'tasks' | 'timer' | 'profile') => void;
 
 export default function AuthPage() {
   const router = useRouter()
@@ -67,13 +67,13 @@ export default function AuthPage() {
 
     try {
       const form = e.currentTarget
-      const email = form.email.value
-      const password = form.password.value
+      const email = (form.elements.namedItem("email") as HTMLInputElement).value
+      const password = (form.elements.namedItem("password") as HTMLInputElement).value
 
       if (activeTab === 'login') {
         await login(email, password)
       } else {
-        const name = form.name.value
+        const name = (form.elements.namedItem("name") as HTMLInputElement).value
         await signup(name, email, password)
       }
 
@@ -140,7 +140,7 @@ export default function AuthPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as 'login' | 'register')} className="w-full">
                 <TabsList className="grid w-full grid-cols-2 bg-white/5">
                   <TabsTrigger value="login" className="text-white data-[state=active]:bg-white/10">
                     Sign In
