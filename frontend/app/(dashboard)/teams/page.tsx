@@ -7,7 +7,7 @@ import { AuthGuard } from "@/components/AuthGuard";
 export default function Teams() {
   const router = useRouter();
 
-  const handleNavigate = (page: 'landing' | 'login' | 'dashboard' | 'tasks' | 'timer' | 'profile' | 'teams') => {
+  const handleNavigate = (page: 'landing' | 'analytics' | 'login' | 'dashboard' | 'tasks' | 'timer' | 'profile' | 'teams') => {
     switch (page) {
       case "dashboard":
         router.push("/dashboard");
