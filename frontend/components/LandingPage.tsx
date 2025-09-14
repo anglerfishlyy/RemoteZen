@@ -13,13 +13,11 @@ import {
   CheckSquare, 
   Zap, 
   Shield, 
-  Clock,
   Star,
-  ArrowRight,
-  Play
+  ArrowRight
 } from 'lucide-react'
 
-type NavigateFunction = (page: 'landing' |'analytics' | 'login' | 'dashboard' | 'tasks' | 'timer' | 'profile') => void;
+type NavigateFunction = (page: 'landing' | 'analytics' | 'login' | 'dashboard' | 'tasks' | 'timer' | 'profile') => void;
 
 interface LandingPageProps {
   onNavigate: NavigateFunction;
@@ -73,105 +71,80 @@ export default function LandingPage({ onNavigate }: LandingPageProps) {
     }
   ]
 
-  const pricingPlans = [
-    {
-      name: "Free",
-      price: "$0",
-      period: "forever",
-      description: "Perfect for individuals getting started",
-      features: [
-        "Up to 3 projects",
-        "Basic task management",
-        "5GB storage",
-        "Community support"
-      ],
-      popular: false
-    },
-    {
-      name: "Pro",
-      price: "$12",
-      period: "month",
-      description: "Best for small teams and professionals",
-      features: [
-        "Unlimited projects",
-        "Advanced analytics",
-        "50GB storage",
-        "Priority support",
-        "Team collaboration",
-        "Custom workflows"
-      ],
-      popular: true
-    },
-    {
-      name: "Enterprise",
-      price: "Custom",
-      description: "For large organizations with advanced needs",
-      features: [
-        "Everything in Pro",
-        "Unlimited storage",
-        "Advanced security",
-        "Custom integrations",
-        "Dedicated support",
-        "SLA guarantee"
-      ],
-      popular: false
-    }
-  ]
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0B0F17] via-[#0F1419] to-[#0B0F17]">
-      {/* Navigation */}
-      <nav className="fixed top-0 w-full z-50 bg-black/20 backdrop-blur-xl border-b border-white/10">
-        <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <motion.div 
-              className="flex items-center space-x-2"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6 }}
+      <motion.nav
+  className="fixed top-0 left-1/2 transform -translate-x-1/2 w-[95%] max-w-6xl z-50 bg-black border border-black/20 rounded-xl shadow-2xl"
+initial={{ y: -5 }}
+animate={{ y: [0, 5, 0] }}
+transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+
+>
+      {/* Floating Navigation */}
+      <motion.nav
+        className="fixed top-10 left-1/2 transform -translate-x-1/2 w-[95%] max-w-6xl z-50 bg-black/20 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl"
+        initial={{ y: -5 }}
+        animate={{ y: [0, 5, 0] }}
+        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+      >
+        <div className="flex items-center justify-between px-6 py-4">
+          {/* Logo */}
+          <motion.div 
+            className="flex items-center space-x-2"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6 }}
+          >
+            <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+              <BarChart3 className="w-5 h-5 text-white" />
+            </div>
+            <span className="text-xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
+              RemoteZen
+            </span>
+          </motion.div>
+
+          {/* Links */}
+          <motion.div 
+            className="hidden md:flex items-center space-x-8"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+          >
+            <a href="#features" className="relative text-gray-300 hover:text-white font-semibold group px-2 py-1 rounded-md">
+              Features
+              <span className="absolute left-0 -bottom-1 w-full h-0.5 bg-gradient-to-r from-blue-500 to-purple-600 scale-x-0 group-hover:scale-x-100 origin-left transition-transform duration-300"></span>
+            </a>
+            <a href="#about" className="relative text-gray-300 hover:text-white font-semibold group px-2 py-1 rounded-md">
+              About
+              <span className="absolute left-0 -bottom-1 w-full h-0.5 bg-gradient-to-r from-blue-500 to-purple-600 scale-x-0 group-hover:scale-x-100 origin-left transition-transform duration-300"></span>
+            </a>
+          </motion.div>
+
+          {/* Buttons */}
+          <motion.div 
+            className="flex items-center space-x-4"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6, delay: 0.3 }}
+          >
+            <Button 
+              variant="ghost" 
+              className="text-white px-4 py-2 rounded-lg hover:text-white hover:bg-white/10 transition-all duration-500"
+              onClick={() => onNavigate('login')}
             >
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                <BarChart3 className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
-                RemoteZen
-              </span>
-            </motion.div>
-            
-            <motion.div 
-              className="hidden md:flex items-center space-x-8"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
+              Sign In
+            </Button>
+            <Button 
+              className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-2 rounded-lg shadow-lg hover:from-blue-600 hover:to-purple-700 transition-all duration-500"
+              onClick={() => onNavigate('login')}
             >
-              <a href="#features" className="text-gray-300 hover:text-white transition-colors">Features</a>
-              <a href="#pricing" className="text-gray-300 hover:text-white transition-colors">Pricing</a>
-              <a href="#about" className="text-gray-300 hover:text-white transition-colors">About</a>
-            </motion.div>
-            
-            <motion.div 
-              className="flex items-center space-x-4"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6, delay: 0.3 }}
-            >
-              <Button 
-                variant="ghost" 
-                className="text-white hover:bg-white/10"
-                onClick={() => onNavigate('login')}
-              >
-                Sign In
-              </Button>
-              <Button 
-                className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white border-0"
-                onClick={() => onNavigate('login')}
-              >
-                Get Started
-              </Button>
-            </motion.div>
-          </div>
+              Get Started
+              <ArrowRight className="w-5 h-5 ml-2 transition-transform duration-300 group-hover:translate-x-2" />
+            </Button>
+          </motion.div>
         </div>
-      </nav>
+      </motion.nav>
+      </motion.nav>
 
       {/* Hero Section */}
       <section className="pt-32 pb-20 px-6 relative">
@@ -210,19 +183,11 @@ export default function LandingPage({ onNavigate }: LandingPageProps) {
             >
               <Button 
                 size="lg" 
-                className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white border-0 px-8 py-3 text-lg group relative z-10"
+                className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white border-0 px-8 py-3 text-lg group relative z-10 transition-all duration-500 hover:scale-105 hover:shadow-2xl"
                 onClick={() => onNavigate('login')}
               >
                 Get Started Free
-                <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
-              </Button>
-              <Button 
-                variant="outline" 
-                size="lg"
-                className="border-white/20 text-white hover:bg-white/10 px-8 py-3 text-lg group relative z-10"
-              >
-                <Play className="w-5 h-5 mr-2" />
-                Watch Demo
+                <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-2 transition-transform duration-300" />
               </Button>
             </motion.div>
           </motion.div>
@@ -291,75 +256,6 @@ export default function LandingPage({ onNavigate }: LandingPageProps) {
         </div>
       </section>
 
-      {/* Pricing Section */}
-      <section id="pricing" className="py-20 px-6">
-        <div className="container mx-auto">
-          <motion.div 
-            className="text-center mb-16"
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-          >
-            <h2 className="text-4xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
-              Simple, transparent pricing
-            </h2>
-            <p className="text-xl text-gray-400 max-w-2xl mx-auto">
-              Choose the perfect plan for your team. Start free and scale as you grow.
-            </p>
-          </motion.div>
-
-          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            {pricingPlans.map((plan, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: index * 0.1 }}
-                viewport={{ once: true }}
-                className="relative"
-              >
-                {plan.popular && (
-                  <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 z-20">
-                    <Badge className="bg-gradient-to-r from-blue-500 to-purple-600 text-white border-0 px-4 py-1 shadow-lg">
-                      Most Popular
-                    </Badge>
-                  </div>
-                )}
-                <Card className={`bg-black/40 backdrop-blur-xl border-white/10 h-full ${plan.popular ? 'border-blue-500/50 relative z-10' : 'relative z-10'} hover:border-white/20 transition-all duration-300`}>
-                  <CardHeader className="text-center">
-                    <CardTitle className="text-white text-2xl">{plan.name}</CardTitle>
-                    <div className="mt-4">
-                      <span className="text-4xl font-bold text-white">{plan.price}</span>
-                      {plan.period && <span className="text-gray-400 ml-2">/ {plan.period}</span>}
-                    </div>
-                    <CardDescription className="text-gray-400 mt-2">
-                      {plan.description}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    <ul className="space-y-3">
-                      {plan.features.map((feature, featureIndex) => (
-                        <li key={featureIndex} className="flex items-center text-gray-300">
-                          <CheckSquare className="w-5 h-5 text-green-400 mr-3 flex-shrink-0" />
-                          {feature}
-                        </li>
-                      ))}
-                    </ul>
-                    <Button 
-                      className={`w-full ${plan.popular ? 'bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white border-0' : 'bg-white/10 hover:bg-white/20 text-white border-white/20'}`}
-                      onClick={() => onNavigate('login')}
-                    >
-                      {plan.name === 'Enterprise' ? 'Contact Sales' : 'Get Started'}
-                    </Button>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* Footer */}
       <footer className="py-12 px-6 border-t border-white/10">
         <div className="container mx-auto">
@@ -370,7 +266,7 @@ export default function LandingPage({ onNavigate }: LandingPageProps) {
               </div>
               <span className="text-lg font-semibold text-white">RemoteZen</span>
             </div>
-            <p className="text-gray-400">© 2024 RemoteZen. All rights reserved.</p>
+            <p className="text-gray-400">© 2025 RemoteZen. All rights reserved.</p>
           </div>
         </div>
       </footer>

@@ -7,20 +7,24 @@ import Sidebar from './Sidebar';
 import { AuthGuard } from './AuthGuard';
 import FeedbackButton from './FeedbackButton';
 
-// Pages within the dashboard shell
 const SHELL_PAGES = new Set(['/dashboard', '/tasks', '/timer', '/analytics', '/teams', '/profile', '/notifications']);
+const HEADER_PAGES = new Set(['/dashboard', '/tasks', '/timer', '/analytics', '/teams', '/profile', '/notifications']); // Pages where header should appear
 
 type NavigateFunction = (page: 'landing' | 'login' | 'dashboard' | 'tasks' | 'timer' | 'analytics' | 'profile' | 'teams' | 'notifications') => void;
 
-export default function SiteLayout({ children }: { children: React.ReactNode }){
+export default function SiteLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const inShell = useMemo(() => {
-    // consider dynamic child paths as inside shell as well
     if (!pathname) return false;
     return Array.from(SHELL_PAGES).some(base => pathname === base || pathname.startsWith(base + '/'));
+  }, [pathname]);
+
+  const showHeader = useMemo(() => {
+    if (!pathname) return false;
+    return Array.from(HEADER_PAGES).some(base => pathname === base || pathname.startsWith(base + '/'));
   }, [pathname]);
 
   const handleNavigate: NavigateFunction = (page) => {
@@ -38,10 +42,9 @@ export default function SiteLayout({ children }: { children: React.ReactNode }){
   };
 
   if (!inShell) {
-    // Public pages use only the header without sidebar
+    // Public pages (landing, login, etc.) - no header
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#0B0F17] via-[#0F1419] to-[#0B0F17]">
-        <Header currentPage={pathname || ''} onNavigate={handleNavigate} onLogout={() => router.push('/login')} onToggleSidebar={undefined} />
         <main className="pt-16">{children}</main>
       </div>
     );
@@ -50,7 +53,14 @@ export default function SiteLayout({ children }: { children: React.ReactNode }){
   return (
     <AuthGuard>
       <div className="min-h-screen bg-gradient-to-br from-[#0B0F17] via-[#0F1419] to-[#0B0F17]">
-        <Header currentPage={pathname || ''} onNavigate={handleNavigate} onLogout={() => router.push('/login')} onToggleSidebar={() => setSidebarCollapsed(v => !v)} />
+        {showHeader && (
+          <Header
+            currentPage={pathname || ''}
+            onNavigate={handleNavigate}
+            onLogout={() => router.push('/login')}
+            onToggleSidebar={() => setSidebarCollapsed(v => !v)}
+          />
+        )}
         <div className="flex">
           <Sidebar currentPage={pathname || ''} onNavigate={handleNavigate} collapsed={sidebarCollapsed} />
           <main className={`flex-1 pt-16 transition-all duration-300 ${sidebarCollapsed ? 'pl-20' : 'pl-64'} pr-6`}>
@@ -62,4 +72,3 @@ export default function SiteLayout({ children }: { children: React.ReactNode }){
     </AuthGuard>
   );
 }
-

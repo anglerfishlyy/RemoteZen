@@ -369,7 +369,7 @@ export default function TimerPage({ onNavigate, onLogout: _onLogout }: TimerPage
                   <CardContent>
                     <Select value={selectedTask} onValueChange={setSelectedTask}>
                       <SelectTrigger className="bg-white/5 border-white/10 text-white">
-                        <SelectValue placeholder="Choose a task or start without one" />
+                        <SelectValue placeholder="Choose a task to focus on" />
                       </SelectTrigger>
                       <SelectContent className="bg-black/90 border-white/10">
                         <SelectItem value="no">No specific task</SelectItem>

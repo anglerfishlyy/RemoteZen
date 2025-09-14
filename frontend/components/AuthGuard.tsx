@@ -15,8 +15,9 @@ export function AuthGuard({ children }: AuthGuardProps) {
   const router = useRouter()
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      router.push('/login')
+    // Only redirect if trying to access protected routes
+    if (!isAuthenticated && window.location.pathname !== '/landing') {
+      router.push('/landing')
     }
   }, [isAuthenticated, router])
 
@@ -29,7 +30,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
           className="text-center"
         >
           <Loader2 className="w-8 h-8 animate-spin text-blue-500 mx-auto mb-4" />
-          <p className="text-white/60">Redirecting to login...</p>
+          <p className="text-white/60">Redirecting to landing page...</p>
         </motion.div>
       </div>
     )
