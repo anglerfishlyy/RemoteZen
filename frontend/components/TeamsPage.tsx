@@ -11,7 +11,7 @@ import { Badge } from './ui/badge'
 import { useAuth } from '@/app/providers'
 
 type NavigateFunction = (page: 'landing' | 'analytics' | 'login' | 'dashboard' | 'tasks' | 'timer' | 'profile') => void;
-
+type Role = "MEMBER" | "MANAGER" | "ADMIN"
 interface TeamsPageProps {
   onNavigate: NavigateFunction
   onLogout: () => void
@@ -109,7 +109,7 @@ export default function TeamsPage({ onNavigate }: TeamsPageProps) {
                 </div>
                 <div>
                   <Label>Role</Label>
-                  <Select value={inviteRole} onValueChange={(v: any) => setInviteRole(v)}>
+                  <Select value={inviteRole} onValueChange={(v: Role) => setInviteRole(v)}>
                     <SelectTrigger className="bg-white/5 border-white/10 text-white">
                       <SelectValue placeholder="Select role" />
                     </SelectTrigger>

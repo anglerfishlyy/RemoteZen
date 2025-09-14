@@ -61,12 +61,12 @@ export default function AuthPage() {
   }
 
   // Form submit handler
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setIsLoading(true)
 
     try {
-      const form = e.currentTarget as any
+      const form = e.currentTarget
       const email = form.email.value
       const password = form.password.value
 
