@@ -128,7 +128,7 @@ const handleDrag = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
       {/* Navigation */}
       <motion.nav
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-          scrollY > 50 ? 'bg-[#FAFAF9]/80 backdrop-blur-xl border-b border-[#E7E5E4]' : 'bg-transparent'
+          scrollY > 50 ? 'bg-[#FAFAF9]/80 backdrop-blur-xl border-b border-[#18110d]' : 'bg-transparent'
         }`}
         initial={{ y: -100 }}
         animate={{ y: 0 }}
@@ -138,10 +138,10 @@ const handleDrag = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
             <div className="flex items-center space-x-2">
-              <div className="w-7 h-7 bg-[#1C1917] rounded-md flex items-center justify-center">
+              <div className="w-7 h-7 bg-[#1b120d] rounded-md flex items-center justify-center">
                 <Sparkles className="w-4 h-4 text-[#FAFAF9]" strokeWidth={2} />
               </div>
-              <span className="text-lg font-semibold tracking-tight text-[#807e6f] hover:text-[#1C1917] transition-colors">
+              <span className="text-lg font-semibold tracking-tight cursor-pointer text-[#807e6f] hover:text-[#1C1917] transition-colors">
                 RemoteZen
               </span>
             </div>
@@ -151,15 +151,15 @@ const handleDrag = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
               <a href="#features" className="text-sm font-medium text-[#57534E] hover:text-[#1C1917] transition-colors">
                 Features
               </a>
-              <a href="#why" className="text-sm font-medium text-[#57534E] hover:text-[#1C1917] transition-colors">
+              <a href="#why" className="text-sm font-medium cursor-pointer text-[#57534E] hover:text-[#1C1917] transition-colors">
                 Why RemoteZen
               </a>
-              <a href="#testimonials" className="text-sm font-medium text-[#57534E] hover:text-[#1C1917] transition-colors">
+              <a href="#testimonials" className="text-sm font-medium cursor-pointer text-[#57534E] hover:text-[#1C1917] transition-colors">
                 Testimonials
               </a>
               <button 
                 onClick={() => onNavigate('login')}
-                className="text-sm font-medium text-[#57534E] hover:text-[#1C1917] transition-colors"
+                className="text-sm font-medium cursor-pointer text-[#57534E] hover:text-[#1C1917] transition-colors"
               >
                 Login
               </button>
@@ -168,7 +168,7 @@ const handleDrag = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
             {/* CTA */}
             <button
               onClick={() => onNavigate('login')}
-              className="group inline-flex items-center px-4 py-2 text-sm font-medium text-[#FAFAF9] bg-[#1C1917] rounded-lg hover:bg-[#292524] transition-all duration-200"
+              className="group inline-flex items-center cursor-pointer px-4 py-2 text-sm font-medium text-[#FAFAF9] bg-[#1C1917] rounded-lg hover:bg-[#292524] transition-all duration-200"
             >
               Get Started
               <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-0.5 transition-transform" strokeWidth={2} />
@@ -209,12 +209,12 @@ const handleDrag = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <button
                 onClick={() => onNavigate('login')}
-                className="group inline-flex items-center px-6 py-3 text-base font-medium text-[#FAFAF9] bg-[#1C1917] rounded-lg hover:bg-[#292524] transition-all duration-200 shadow-sm"
+                className="group inline-flex cursor-pointer items-center px-6 py-3 text-base font-medium text-[#FAFAF9] bg-[#1C1917] rounded-lg hover:bg-[#292524] transition-all duration-200 shadow-sm"
               >
                 Start for free
                 <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-0.5 transition-transform" strokeWidth={2} />
               </button>
-              <button className="inline-flex items-center px-6 py-3 text-base font-medium text-[#1C1917] bg-transparent border border-[#E7E5E4] rounded-lg hover:bg-[#F5F5F4] transition-all duration-200">
+              <button className="inline-flex cursor-pointer items-center px-6 py-3 text-base font-medium text-[#1C1917] bg-transparent border border-[#E7E5E4] rounded-lg hover:bg-[#F5F5F4] transition-all duration-200">
                 View demo
               </button>
             </div>
@@ -671,12 +671,12 @@ const handleDrag = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <button
                 onClick={() => onNavigate('login')}
-                className="group inline-flex items-center px-8 py-4 text-base font-medium text-[#1C1917] bg-white rounded-lg hover:bg-[#F5F5F4] transition-all duration-200 shadow-lg"
+                className="group inline-flex cursor-pointer items-center px-8 py-4 text-base font-medium text-[#1C1917] bg-white rounded-lg hover:bg-[#F5F5F4] transition-all duration-200 shadow-lg"
               >
                 Get started for free
                 <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-0.5 transition-transform" strokeWidth={2} />
               </button>
-              <button className="inline-flex items-center px-8 py-4 text-base font-medium text-white bg-transparent border border-white/20 rounded-lg hover:bg-white/10 transition-all duration-200">
+              <button className="inline-flex cursor-pointer items-center px-8 py-4 text-base font-medium text-white bg-transparent border border-white/20 rounded-lg hover:bg-white/10 transition-all duration-200">
                 Schedule a demo
               </button>
             </div>
