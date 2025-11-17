@@ -196,60 +196,39 @@ export default function LandingPage({ onNavigate }: LandingPageProps) {
             </div>
           </motion.div>
 
-          {/* Dashboard Preview */}
-          <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-            className="mt-20 relative"
-          >
-            <div className="relative mx-auto max-w-5xl">
-              <div className="absolute -inset-4 bg-gradient-to-b from-[#E7E5E4]/40 to-transparent blur-3xl rounded-3xl" />
-              <div className="relative bg-white border border-[#E7E5E4] rounded-2xl shadow-2xl shadow-[#A8A29E]/10 overflow-hidden">
-                <div className="bg-[#F5F5F4] px-4 py-3 border-b border-[#E7E5E4] flex items-center space-x-2">
-                  <div className="flex space-x-1.5">
-                    <div className="w-3 h-3 bg-[#DC2626] rounded-full" />
-                    <div className="w-3 h-3 bg-[#F59E0B] rounded-full" />
-                    <div className="w-3 h-3 bg-[#10B981] rounded-full" />
-                  </div>
-                </div>
-                <div className="p-8 bg-gradient-to-br from-[#FAFAF9] to-[#F5F5F4]">
-                  <div className="grid grid-cols-3 gap-4 mb-4">
-                    <div className="bg-white p-4 rounded-lg border border-[#E7E5E4] shadow-sm">
-                      <div className="w-8 h-8 bg-[#F5F5F4] rounded mb-2" />
-                      <div className="h-3 bg-[#F5F5F4] rounded w-3/4 mb-2" />
-                      <div className="h-2 bg-[#F5F5F4] rounded w-1/2" />
-                    </div>
-                    <div className="bg-white p-4 rounded-lg border border-[#E7E5E4] shadow-sm">
-                      <div className="w-8 h-8 bg-[#F5F5F4] rounded mb-2" />
-                      <div className="h-3 bg-[#F5F5F4] rounded w-2/3 mb-2" />
-                      <div className="h-2 bg-[#F5F5F4] rounded w-1/2" />
-                    </div>
-                    <div className="bg-white p-4 rounded-lg border border-[#E7E5E4] shadow-sm">
-                      <div className="w-8 h-8 bg-[#F5F5F4] rounded mb-2" />
-                      <div className="h-3 bg-[#F5F5F4] rounded w-3/5 mb-2" />
-                      <div className="h-2 bg-[#F5F5F4] rounded w-2/3" />
-                    </div>
-                  </div>
-                  <div className="bg-white p-6 rounded-lg border border-[#E7E5E4] shadow-sm">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="h-4 bg-[#F5F5F4] rounded w-32" />
-                      <div className="h-4 bg-[#F5F5F4] rounded w-16" />
-                    </div>
-                    <div className="space-y-3">
-                      <div className="h-3 bg-[#F5F5F4] rounded w-full" />
-                      <div className="h-3 bg-[#F5F5F4] rounded w-5/6" />
-                      <div className="h-3 bg-[#F5F5F4] rounded w-4/5" />
-                    </div>
-                  </div>
-                </div>
+      <motion.div
+        initial={{ opacity: 0, y: 40 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+        className="mt-20 relative"
+      >
+        <div className="relative mx-auto max-w-5xl">
+          <div className="absolute -inset-4 bg-gradient-to-b from-[#E7E5E4]/40 to-transparent blur-3xl rounded-3xl" />
+
+          <div className="relative bg-white border border-[#E7E5E4] rounded-2xl shadow-2xl shadow-[#A8A29E]/10 overflow-hidden">
+            
+            {/* Window Top Bar */}
+            <div className="bg-[#F5F5F4] px-4 py-3 border-b border-[#E7E5E4] flex items-center space-x-2">
+              <div className="flex space-x-1.5">
+                <div className="w-3 h-3 bg-[#DC2626] rounded-full" />
+                <div className="w-3 h-3 bg-[#F59E0B] rounded-full" />
+                <div className="w-3 h-3 bg-[#10B981] rounded-full" />
               </div>
             </div>
-          </motion.div>
+
+            <div className="p-0 bg-[#FAFAF9]">
+              <img 
+                src="/main.png" 
+                alt="Dashboard preview" 
+                className="w-full h-auto rounded-b-2xl"
+              />
+            </div>
+          </div>
         </div>
+      </motion.div>
+      </div>
       </section>
 
-      {/* Scroll Storytelling Section */}
       <section ref={storyRef} className="py-32 px-6 lg:px-8 bg-white">
         <div className="max-w-6xl mx-auto">
           <div className="min-h-[80vh] flex items-center justify-center relative">
