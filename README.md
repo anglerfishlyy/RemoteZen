@@ -1,8 +1,8 @@
-# RemoteZen (MVP)
+# RemoteZen 
 
 RemoteZen helps remote teams stay focused and aligned with a simple dashboard for tasks and a built-in focus timer.
 
-## Features (MVP)
+## Features 
 - Authentication with role-based access (manager, member)
 - Auto team creation & invitation system
 - Task management (create, assign, update, delete)
