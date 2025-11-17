@@ -25,7 +25,6 @@ interface LandingPageProps {
 
 export default function LandingPage({ onNavigate }: LandingPageProps) {
   const [scrollY, setScrollY] = useState(0);
-  const [sliderPosition, setSliderPosition] = useState(50);
   const heroRef = useRef(null);
   const storyRef = useRef(null);
   const isStoryInView = useInView(storyRef, { once: false, amount: 0.3 });
@@ -34,10 +33,34 @@ export default function LandingPage({ onNavigate }: LandingPageProps) {
     target: storyRef,
     offset: ["start end", "end start"]
   });
+  
 
   const chaosOpacity = useTransform(scrollYProgress, [0, 0.3, 0.5], [0, 1, 0]);
   const mergeScale = useTransform(scrollYProgress, [0.3, 0.5, 0.7], [1, 0.3, 0]);
   const calmOpacity = useTransform(scrollYProgress, [0.6, 0.8], [0, 1]);
+  const [sliderPosition, setSliderPosition] = useState(50);
+
+const handleDrag = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
+  const container = e.currentTarget.parentElement;
+  if (!container) return;
+
+  const rect = container.getBoundingClientRect();
+  const updatePosition = (clientX: number) => {
+    const x = clientX - rect.left;
+    const percentage = (x / rect.width) * 100;
+    setSliderPosition(Math.max(0, Math.min(100, percentage)));
+  };
+
+  const handleMove = (event: MouseEvent) => updatePosition(event.clientX);
+  const handleUp = () => {
+    document.removeEventListener("mousemove", handleMove);
+    document.removeEventListener("mouseup", handleUp);
+  };
+
+  document.addEventListener("mousemove", handleMove);
+  document.addEventListener("mouseup", handleUp);
+};
+
 
   useEffect(() => {
     const handleScroll = () => setScrollY(window.scrollY);
@@ -336,87 +359,55 @@ export default function LandingPage({ onNavigate }: LandingPageProps) {
       </section>
 
       {/* Before/After Slider */}
-      <section className="py-20 px-6 lg:px-8 bg-[#F5F5F4]">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-[#1C1917] mb-4">
-              See the difference
-            </h2>
-            <p className="text-lg text-[#78716C]">
-              Drag to compare your old workflow with RemoteZen
-            </p>
-          </div>
+<section className="py-20 px-6 lg:px-8 bg-[#F5F5F4]">
+  <div className="max-w-5xl mx-auto">
+    <div className="text-center mb-12">
+      <h2 className="text-3xl md:text-4xl font-bold text-[#1C1917] mb-4">
+        See the difference
+      </h2>
+      <p className="text-lg text-[#78716C]">
+        Drag to compare your old workflow with RemoteZen
+      </p>
+    </div>
 
-          <div className="relative h-96 bg-white border border-[#E7E5E4] rounded-2xl overflow-hidden shadow-lg">
-            {/* Before Side */}
-            <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#F5F5F4] to-[#E7E5E4]">
-              <div className="text-center p-8">
-                <div className="grid grid-cols-2 gap-3 mb-4 blur-[2px] opacity-70">
-                  {[...Array(6)].map((_, i) => (
-                    <div key={i} className="bg-white/60 p-4 rounded border border-[#D6D3D1] h-20" />
-                  ))}
-                </div>
-                <p className="text-sm font-medium text-[#57534E]">Before: Scattered tools</p>
-              </div>
-            </div>
+    <div className="relative h-96 bg-white border border-[#E7E5E4] rounded-2xl overflow-hidden shadow-lg">
 
-            {/* After Side */}
-            <div 
-              className="absolute inset-0 flex items-center justify-center bg-white"
-              style={{ clipPath: `inset(0 ${100 - sliderPosition}% 0 0)` }}
-            >
-              <div className="text-center p-8">
-                <div className="bg-[#FAFAF9] border border-[#E7E5E4] rounded-xl p-6 max-w-md mx-auto shadow-sm">
-                  <div className="flex items-center space-x-3 mb-4">
-                    <div className="w-10 h-10 bg-[#1C1917] rounded-lg flex items-center justify-center">
-                      <Sparkles className="w-5 h-5 text-white" strokeWidth={2} />
-                    </div>
-                    <div className="text-left">
-                      <div className="h-2 bg-[#E7E5E4] rounded w-24 mb-1" />
-                      <div className="h-2 bg-[#E7E5E4] rounded w-16" />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    {[...Array(3)].map((_, i) => (
-                      <div key={i} className="h-8 bg-white border border-[#E7E5E4] rounded" />
-                    ))}
-                  </div>
-                </div>
-                <p className="text-sm font-medium text-[#1C1917] mt-4">After: One unified workspace</p>
-              </div>
-            </div>
+      {/* BEFORE */}
+      <img 
+        src="/before.png"
+        className="absolute inset-0 w-full h-full object-cover"
+      />
 
-            {/* Slider Handle */}
-            <div
-              className="absolute top-0 bottom-0 w-1 bg-[#1C1917] cursor-ew-resize z-10"
-              style={{ left: `${sliderPosition}%` }}
-              onMouseDown={(e) => {
-                const handleMouseMove = (moveEvent: MouseEvent) => {
-                  const rect = e.currentTarget.parentElement?.getBoundingClientRect();
-                  if (rect) {
-                    const x = moveEvent.clientX - rect.left;
-                    const percentage = (x / rect.width) * 100;
-                    setSliderPosition(Math.max(0, Math.min(100, percentage)));
-                  }
-                };
-                const handleMouseUp = () => {
-                  document.removeEventListener('mousemove', handleMouseMove);
-                  document.removeEventListener('mouseup', handleMouseUp);
-                };
-                document.addEventListener('mousemove', handleMouseMove);
-                document.addEventListener('mouseup', handleMouseUp);
-              }}
-            >
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 bg-[#1C1917] rounded-full border-4 border-white shadow-lg flex items-center justify-center">
-                <div className="flex space-x-0.5">
-                  <div className="w-0.5 h-4 bg-white rounded" />
-                  <div className="w-0.5 h-4 bg-white rounded" />
-                </div>
-              </div>
-            </div>
+      {/* AFTER */}
+      <div
+        className="absolute inset-0 overflow-hidden"
+        style={{ clipPath: `inset(0 ${100 - sliderPosition}% 0 0)` }}
+      >
+        <img 
+          src="/main.png"
+          className="w-full h-full object-cover"
+        />
+      </div>
+
+      {/* SLIDER */}
+      <div
+        className="absolute top-0 bottom-0 w-1 bg-[#1C1917] cursor-ew-resize z-20"
+        style={{ left: `${sliderPosition}%` }}
+        onMouseDown={handleDrag}
+      >
+        <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 left-1/2 w-10 h-10 bg-[#1C1917] rounded-full border-4 border-white shadow-lg flex items-center justify-center">
+          <div className="flex space-x-0.5">
+            <div className="w-0.5 h-4 bg-white rounded" />
+            <div className="w-0.5 h-4 bg-white rounded" />
           </div>
         </div>
-      </section>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+
 
       {/* Features Grid */}
       <section id="features" className="py-20 px-6 lg:px-8 bg-white">
