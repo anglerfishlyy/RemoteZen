@@ -16,6 +16,7 @@ import {
   Brain,
   Target
 } from 'lucide-react'
+import { Span } from 'next/dist/trace';
 
 type NavigateFunction = (page: string) => void;
 
@@ -407,8 +408,6 @@ const handleDrag = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
   </div>
 </section>
 
-
-
       {/* Features Grid */}
       <section id="features" className="py-20 px-6 lg:px-8 bg-white">
         <div className="max-w-7xl mx-auto">
@@ -475,7 +474,7 @@ const handleDrag = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
                   Tasks, timers, docs, and team chat in one place. No more context switching. No more lost productivity. Just seamless work.
                 </p>
                 <ul className="space-y-3">
-                  {["Unified task management", "Integrated communication", "Centralized documents"].map((item, i) => (
+                  {["Unified task management", "Integrated communication", "Focus Timers"].map((item, i) => (
                     <li key={i} className="flex items-center space-x-3">
                       <CheckCircle2 className="w-5 h-5 text-[#10B981] flex-shrink-0" strokeWidth={2} />
                       <span className="text-[#57534E]">{item}</span>
@@ -484,27 +483,28 @@ const handleDrag = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
                 </ul>
               </div>
               <div className="bg-white border border-[#E7E5E4] rounded-2xl p-8 shadow-lg">
-                <div className="space-y-4">
-                  <div className="h-12 bg-[#F5F5F4] rounded-lg" />
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="h-24 bg-[#F5F5F4] rounded-lg" />
-                    <div className="h-24 bg-[#F5F5F4] rounded-lg" />
-                  </div>
-                  <div className="h-32 bg-[#F5F5F4] rounded-lg" />
-                </div>
+                <img 
+    src="/main.png"
+    alt="Unified Workspace UI"
+    className="rounded-xl w-full"
+  />
               </div>
             </div>
 
             {/* Intelligent Automation */}
             <div className="grid lg:grid-cols-2 gap-12 items-center">
+              
               <div className="order-2 lg:order-1 bg-white border border-[#E7E5E4] rounded-2xl p-8 shadow-lg">
+                
                 <div className="flex items-center space-x-4 mb-6">
+                  
                   <div className="w-12 h-12 bg-[#1C1917] rounded-lg flex items-center justify-center">
-                    <Brain className="w-6 h-6 text-white" strokeWidth={2} />
+                    
+                    <span> <Brain className="w-6 h-6 text-white" strokeWidth={2} /></span>
                   </div>
                   <div className="flex-1">
-                    <div className="h-3 bg-[#F5F5F4] rounded w-3/4 mb-2" />
-                    <div className="h-2 bg-[#F5F5F4] rounded w-1/2" />
+                    
+                    <h2 className="text-2xl md:text-3xl font-bold text-[#1C1917] mb-4" >coming soon</h2>
                   </div>
                 </div>
                 <div className="space-y-3">
@@ -517,8 +517,10 @@ const handleDrag = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
                 </div>
               </div>
               <div className="order-1 lg:order-2">
-                <div className="inline-flex items-center space-x-2 px-3 py-1 bg-white border border-[#E7E5E4] rounded-full mb-4">
-                  <Brain className="w-4 h-4 text-[#57534E]" strokeWidth={2} />
+               
+                <div className="inline-flex items-center space-x-2 px-3 py-1 bg-white border border-[#E7E5E4] rounded-full mb-4" >
+                  <><Brain className="w-4 h-4 text-[#57534E]" strokeWidth={2} />
+                   </>
                   <span className="text-sm font-medium text-[#57534E]">Intelligent Automation</span>
                 </div>
                 <h3 className="text-2xl md:text-3xl font-bold text-[#1C1917] mb-4">
@@ -561,65 +563,24 @@ const handleDrag = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
                 </ul>
               </div>
               <div className="bg-white border border-[#E7E5E4] rounded-2xl p-8 shadow-lg">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="text-sm font-medium text-[#57534E]">Focus Session</div>
-                  <div className="px-3 py-1 bg-[#10B981]/10 text-[#10B981] text-xs font-medium rounded-full">
-                    Active
-                  </div>
-                </div>
-                <div className="flex items-center justify-center mb-6">
-                  <div className="relative w-40 h-40">
-                    <svg className="transform -rotate-90 w-40 h-40">
-                      <circle cx="80" cy="80" r="70" stroke="#F5F5F4" strokeWidth="8" fill="none" />
-                      <circle cx="80" cy="80" r="70" stroke="#1C1917" strokeWidth="8" fill="none" strokeDasharray="440" strokeDashoffset="110" />
-                    </svg>
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="text-center">
-                        <div className="text-3xl font-bold text-[#1C1917]">18:30</div>
-                        <div className="text-xs text-[#78716C]">remaining</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="text-center text-sm text-[#57534E]">
-                  Working on: Product Design Sprint
-                </div>
+                
+                   <img 
+                    src="/focus.png"
+                    alt="Automation Dashboard"
+                    className="rounded-xl w-full"
+                  />
+                           
               </div>
             </div>
 
             {/* Analytics */}
             <div className="grid lg:grid-cols-2 gap-12 items-center">
               <div className="order-2 lg:order-1 bg-white border border-[#E7E5E4] rounded-2xl p-8 shadow-lg">
-                <div className="mb-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="text-sm font-medium text-[#57534E]">This Week</div>
-                    <div className="text-xs text-[#78716C]">+12% vs last week</div>
-                  </div>
-                  <div className="grid grid-cols-7 gap-2 mb-2">
-                    {[65, 80, 75, 90, 85, 70, 60].map((height, i) => (
-                      <div key={i} className="flex flex-col items-center">
-                        <div className="w-full bg-[#F5F5F4] rounded-t" style={{ height: `${height}px` }}>
-                          <div className="w-full bg-[#1C1917] rounded-t" style={{ height: `${height * 0.7}px` }} />
-                        </div>
-                        <div className="text-xs text-[#78716C] mt-2">
-                          {['M', 'T', 'W', 'T', 'F', 'S', 'S'][i]}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div className="grid grid-cols-3 gap-4">
-                  {[
-                    { label: "Tasks Done", value: "42" },
-                    { label: "Focus Hours", value: "28" },
-                    { label: "Team Syncs", value: "12" }
-                  ].map((stat, i) => (
-                    <div key={i} className="text-center">
-                      <div className="text-2xl font-bold text-[#1C1917]">{stat.value}</div>
-                      <div className="text-xs text-[#78716C]">{stat.label}</div>
-                    </div>
-                  ))}
-                </div>
+                 <img 
+                  src="/analytics.png"
+                  alt="Automation Dashboard"
+                  className="rounded-xl w-full"
+                />             
               </div>
               <div className="order-1 lg:order-2">
                 <div className="inline-flex items-center space-x-2 px-3 py-1 bg-white border border-[#E7E5E4] rounded-full mb-4">
