@@ -282,20 +282,20 @@ export default function AnalyticsPage({ onNavigate: _onNavigate, onLogout: _onLo
                 </h3>
                 <ResponsiveContainer width="100%" height={300}>
                   <PieChart>
-                    <Pie
-                      data={taskDistribution}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={100}
-                      dataKey="count"
-                      startAngle={90}
-                      endAngle={450}
-                    >
-                      {taskDistribution.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
+                  <Pie
+                    data={taskDistribution.map(td => ({ name: td.status, value: td.count, color: td.color }))}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={100}
+                    dataKey="value"
+                    startAngle={90}
+                    endAngle={450}
+                  >
+                    {taskDistribution.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
                     <Tooltip 
                       contentStyle={{ 
                         backgroundColor: 'rgba(31, 41, 55, 0.9)', 
