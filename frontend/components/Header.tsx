@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
+import { useSession, signOut } from "next-auth/react";
 import { motion } from "framer-motion";
 import { Button } from "./ui/button";
 import { Avatar, AvatarFallback } from "./ui/avatar";
-import { useAuth } from "@/app/providers";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,59 +14,66 @@ import {
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import { Badge } from "./ui/badge";
-import { BarChart3, CheckSquare, Timer, User, LogOut, Settings, Bell, Search } from "lucide-react";
+import { BarChart3, CheckSquare, Timer, User, LogOut, Bell, Search } from "lucide-react";
 
 type NavigateFunction = (
-  page: "landing" | "login" | "dashboard" | "tasks" | "timer" | "notifications" | "profile"
+  page: "dashboard" | "tasks" | "timer" | "notifications" | "profile"
 ) => void;
 
 interface HeaderProps {
   currentPage: string;
   onNavigate: NavigateFunction;
-  onLogout: () => void;
   onToggleSidebar?: () => void;
 }
 
-export default function Header({ currentPage, onNavigate, onLogout, onToggleSidebar }: HeaderProps) {
-  const { user, isAuthenticated } = useAuth();
+export default function Header({ currentPage, onNavigate, onToggleSidebar }: HeaderProps) {
+  const { data: session } = useSession();
   const [hasTasks, setHasTasks] = useState(false);
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+
+  const user = session?.user;
+  const accessToken = session?.accessToken;
 
   const initials = (user?.name || "")
     .split(" ")
     .filter(Boolean)
     .slice(0, 2)
-    .map((s) => s[0]?.toUpperCase())
+    .map((s: string) => s[0]?.toUpperCase())
     .join("") || "";
 
-  // Check if user has tasks
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token || !user) return;
+    if (!accessToken || !user) return;
 
     const checkTasks = async () => {
       try {
-        const meRes = await fetch(`${API_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
+        const meRes = await fetch('/api/user/me', {
+          credentials: 'include',
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
         const me = await meRes.json();
         const firstTeam = me?.teams?.[0];
         if (!firstTeam) return;
 
-        const tRes = await fetch(`${API_URL}/tasks?teamId=${firstTeam.id}`, { headers: { Authorization: `Bearer ${token}` } });
+        const tRes = await fetch(`/api/tasks?teamId=${firstTeam.id}`, {
+          credentials: 'include',
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
         const tData = await tRes.json();
         setHasTasks(Array.isArray(tData) && tData.length > 0);
-      } catch (e) {
-        console.error(e);
+      } catch {
         setHasTasks(false);
       }
     };
     checkTasks();
-  }, [API_URL, user]);
+  }, [accessToken, user]);
+
+  const handleLogout = async () => {
+    await signOut({ redirect: true, callbackUrl: "/" });
+  };
 
   return (
     <header className="fixed top-0 w-full z-50 bg-black/20 backdrop-blur-xl border-b border-white/10">
       <div className="container mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
-          {/* Sidebar Toggle + Logo */}
           <div className="flex items-center gap-3">
             <button
               aria-label="Toggle sidebar"
@@ -80,24 +88,27 @@ export default function Header({ currentPage, onNavigate, onLogout, onToggleSide
               </div>
             </button>
 
-            {/* Logo button */}
-            <button
-              onClick={() => onNavigate(isAuthenticated ? "dashboard" : "landing")}
-              className="flex items-center space-x-2 hover:opacity-80 transition-opacity"
-            >
+            <Link href="/dashboard" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
               <motion.div
                 whileHover={{ scale: 1.05 }}
                 className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center"
               >
-                <img src="/logo.png" alt="Logo" className="w-200 h-20 object-contain" />
+               <img
+      src="/logo.png"
+      alt="RemoteZen Logo"
+      width={72}
+      height={72}
+      
+      aria-hidden="false"
+    />
+
               </motion.div>
               <span className="text-xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
                 RemoteZen
               </span>
-            </button>
+            </Link>
           </div>
 
-          {/* Navigation */}
           <nav className="hidden md:flex items-center space-x-1">
             <Button
               variant="ghost"
@@ -139,31 +150,27 @@ export default function Header({ currentPage, onNavigate, onLogout, onToggleSide
             </Button>
           </nav>
 
-          {/* Right side actions */}
           <div className="flex items-center space-x-4">
-            {/* Search */}
             <Button variant="ghost" size="sm" className="text-white hover:bg-white/10">
               <Search className="w-4 h-4" />
             </Button>
 
-            {/* Notifications */}
             <Button
-            variant="ghost"
-            size="sm"
-            className="text-white hover:bg-white/10 relative"
-            onClick={() => onNavigate("notifications")} 
-           >
+              variant="ghost"
+              size="sm"
+              className="text-white hover:bg-white/10 relative"
+              onClick={() => onNavigate("notifications")}
+            >
               <Bell className="w-4 h-4" />
               <Badge className="absolute -top-1 -right-1 w-2 h-2 p-0 bg-red-500 border-0" />
             </Button>
 
-            {/* User menu */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                   <Avatar className="h-8 w-8">
                     <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-600 text-white">
-                      {initials || ""}
+                      {initials}
                     </AvatarFallback>
                   </Avatar>
                 </Button>
@@ -189,11 +196,11 @@ export default function Header({ currentPage, onNavigate, onLogout, onToggleSide
                   <User className="mr-2 h-4 w-4" />
                   <span>Profile</span>
                 </DropdownMenuItem>
-               
+
                 <DropdownMenuSeparator className="bg-white/10" />
                 <DropdownMenuItem
                   className="text-red-400 hover:bg-red-500/10 cursor-pointer"
-                  onClick={onLogout}
+                  onClick={handleLogout}
                 >
                   <LogOut className="mr-2 h-4 w-4" />
                   <span>Log out</span>

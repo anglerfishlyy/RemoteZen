@@ -1,9 +1,9 @@
 'use client'
 
-import { useAuth } from '@/app/providers'
-import { useEffect } from 'react'
+import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { motion } from "framer-motion"
+import { useEffect } from 'react'
+import { motion } from 'framer-motion'
 import { Loader2 } from 'lucide-react'
 
 interface AuthGuardProps {
@@ -11,17 +11,16 @@ interface AuthGuardProps {
 }
 
 export function AuthGuard({ children }: AuthGuardProps) {
-  const { isAuthenticated } = useAuth()
+  const { data: session, status } = useSession()
   const router = useRouter()
 
   useEffect(() => {
-    // Only redirect if trying to access protected routes
-    if (!isAuthenticated && window.location.pathname !== '/landing') {
-      router.push('/landing')
+    if (status === 'unauthenticated') {
+      router.push('/login')
     }
-  }, [isAuthenticated, router])
+  }, [status, router])
 
-  if (!isAuthenticated) {
+  if (status === 'loading') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#0B0F17] via-[#0F1419] to-[#0B0F17] flex items-center justify-center">
         <motion.div
@@ -30,10 +29,14 @@ export function AuthGuard({ children }: AuthGuardProps) {
           className="text-center"
         >
           <Loader2 className="w-8 h-8 animate-spin text-blue-500 mx-auto mb-4" />
-          <p className="text-white/60">Redirecting to landing page...</p>
+          <p className="text-white/60">Loading...</p>
         </motion.div>
       </div>
     )
+  }
+
+  if (status === 'unauthenticated' || !session) {
+    return null
   }
 
   return <>{children}</>

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import { useAuth } from '@/app/providers'
+import { signOut } from 'next-auth/react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -13,8 +14,7 @@ import { motion } from 'framer-motion'
 import { User, Bell, Moon, Sun, Shield, Trash2, Save } from 'lucide-react'
 
 export default function ProfileSettings() {
-  const { logout, setUser } = useAuth()
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
+  const { user } = useAuth()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [role, setRole] = useState('')
@@ -34,11 +34,10 @@ export default function ProfileSettings() {
   const [confirmPassword, setConfirmPassword] = useState('')
 
   useEffect(() => {
-    const token = localStorage.getItem('token')
-    if (!token) return
     const load = async () => {
       try {
-        const res = await fetch(`${API_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
+        const res = await fetch('/api/user/me', { credentials: 'include' })
+        if (!res.ok) return
         const data = await res.json()
         if (data?.user) {
           setName(data.user.name || '')
@@ -51,28 +50,25 @@ export default function ProfileSettings() {
       }
     }
     load()
-  }, [API_URL])
+  }, [])
 
   const saveProfile = async () => {
-    const token = localStorage.getItem('token')
-    if (!token) return
     try {
       setSaving(true)
       setMessage('')
       
-      const response = await fetch(`${API_URL}/auth/me`, {
+      const response = await fetch('/api/user/me', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
         },
+        credentials: 'include',
         body: JSON.stringify({ name })
       })
 
       if (response.ok) {
         const data = await response.json()
         if (data?.user) {
-          setUser(data.user)
           setMessage('Profile updated successfully!')
         }
       } else {
@@ -97,18 +93,16 @@ export default function ProfileSettings() {
       return
     }
 
-    const token = localStorage.getItem('token')
-    if (!token) return
     try {
       setSaving(true)
       setMessage('')
       
-      const response = await fetch(`${API_URL}/auth/me`, {
+      const response = await fetch('/api/user/me', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
         },
+        credentials: 'include',
         body: JSON.stringify({ password: newPassword })
       })
 
@@ -407,7 +401,7 @@ export default function ProfileSettings() {
                     <Separator className="bg-white/10" />
                     <Button 
                       variant="outline" 
-                      onClick={logout} 
+                      onClick={() => signOut({ callbackUrl: '/login' })} 
                       className="border-white/20 text-white hover:bg-white/10 w-full"
                     >
                       Log out

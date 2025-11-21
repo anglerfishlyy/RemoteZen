@@ -39,7 +39,6 @@ interface SidebarProps {
 export default function Sidebar({ currentPage, onNavigate, collapsed = false }: SidebarProps) {
   const { user } = useAuth()
   const { unreadCount } = useNotifications()
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
   const [, setTeamId] = useState<string>('')
   const [todayFocusMin, setTodayFocusMin] = useState<number>(0)
   const [tasksCompleted, setTasksCompleted] = useState<number>(0)
@@ -62,29 +61,37 @@ export default function Sidebar({ currentPage, onNavigate, collapsed = false }: 
   ]
 
   useEffect(() => {
-    const token = localStorage.getItem('token')
-    if (!token || !user) return
+    if (!user) return
     const load = async () => {
       try {
-        const meRes = await fetch(`${API_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
+        const meRes = await fetch('/api/user/me', { credentials: 'include' })
+        if (!meRes.ok) return
         const me = await meRes.json()
-        const t = me?.teams?.[0]
+        const t = me?.user?.teams?.[0]?.team
         if (!t) return
         setTeamId(t.id)
 
+        // Calculate today's stats from focus logs and tasks
         const today = new Date()
         const from = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-        const to = new Date(from.getTime() + 24*60*60*1000)
-        const aRes = await fetch(`${API_URL}/analytics/productivity?teamId=${t.id}&from=${from.toISOString()}&to=${to.toISOString()}`, { headers: { Authorization: `Bearer ${token}` } })
-        if (aRes.ok) {
-          const a = await aRes.json()
-          setTodayFocusMin(Math.floor((a?.totalFocusSeconds || 0)/60))
-          setTasksCompleted(a?.tasksCompleted || 0)
+        const logsRes = await fetch('/api/focus', { credentials: 'include' })
+        if (logsRes.ok) {
+          const logs = await logsRes.json()
+          const todayLogs = Array.isArray(logs) ? logs.filter((l: any) => new Date(l.startTime) >= from) : []
+          const totalSeconds = todayLogs.reduce((sum: number, l: any) => sum + (l.duration || 0), 0)
+          setTodayFocusMin(Math.floor(totalSeconds / 60))
+        }
+        
+        const tasksRes = await fetch(`/api/tasks?teamId=${t.id}`, { credentials: 'include' })
+        if (tasksRes.ok) {
+          const tasks = await tasksRes.json()
+          const completed = Array.isArray(tasks) ? tasks.filter((task: any) => task.status === 'DONE').length : 0
+          setTasksCompleted(completed)
         }
       } catch (e) { console.error(e) }
     }
     load()
-  }, [API_URL, user])
+  }, [user])
 
   return (
     <aside className={`fixed left-0 top-16 z-40 h-[calc(100vh-4rem)] ${collapsed ? 'w-16' : 'w-64'} bg-black/40 backdrop-blur-xl border-r border-white/30 overflow-y-auto custom-scrollbar transition-all duration-300`}>

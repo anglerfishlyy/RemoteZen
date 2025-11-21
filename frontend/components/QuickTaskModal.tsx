@@ -12,7 +12,6 @@ export default function QuickTaskModal({ isOpen, onClose }: QuickTaskModalProps)
   const [description, setDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,27 +21,30 @@ export default function QuickTaskModal({ isOpen, onClose }: QuickTaskModalProps)
     setSubmitStatus('idle');
 
     try {
-      const token = localStorage.getItem('token');
-      if (!token) return;
-
       // Get user's first team
-      const meRes = await fetch(`${API_URL}/auth/me`, { 
-        headers: { Authorization: `Bearer ${token}` } 
+      const meRes = await fetch('/api/user/me', { 
+        credentials: 'include'
       });
+      
+      if (!meRes.ok) {
+        setSubmitStatus('error');
+        return;
+      }
+      
       const me = await meRes.json();
-      const team = me?.teams?.[0];
+      const team = me?.user?.teams?.[0]?.team;
       
       if (!team) {
         setSubmitStatus('error');
         return;
       }
 
-      const response = await fetch(`${API_URL}/tasks`, {
+      const response = await fetch('/api/tasks', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
         },
+        credentials: 'include',
         body: JSON.stringify({
           title: title.trim(),
           description: description.trim() || null,

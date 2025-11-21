@@ -57,7 +57,6 @@ export default function TasksPage({ onNavigate, onLogout: _onLogout }: TasksPage
   const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const { user } = useAuth();
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
   const [loading, setLoading] = useState(true);
   const [tasks, setTasks] = useState<TaskType[]>([]);
   const [tasksMy, setTasksMy] = useState<TaskType[]>([]);
@@ -68,46 +67,50 @@ export default function TasksPage({ onNavigate, onLogout: _onLogout }: TasksPage
 
   // Derive user's first teamId for now
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token || !user) return;
-    // Call /auth/me to get teams so we know teamId and members
+    if (!user) return;
+    // Call /api/user/me to get teams so we know teamId and members
     const load = async () => {
       try {
-        const res = await fetch(`${API_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
+        const res = await fetch('/api/user/me', { credentials: 'include' });
+        if (!res.ok) return;
         const data = await res.json();
-        const firstTeam = data.teams?.[0];
+        const firstTeam = data.user?.teams?.[0]?.team;
         if (firstTeam) {
           setTeamId(firstTeam.id);
           // fetch members of this team to populate assignee select
-          const memRes = await fetch(`${API_URL}/teams/${firstTeam.id}/members`, { headers: { Authorization: `Bearer ${token}` } });
-          const mem = await memRes.json();
-          setTeamMembers((mem || []).map((m: { user: UserBrief }) => ({ id: m.user.id, name: m.user.name })));
+          const memRes = await fetch(`/api/teams/${firstTeam.id}/members`, { credentials: 'include' });
+          if (memRes.ok) {
+            const mem = await memRes.json();
+            setTeamMembers((mem || []).map((m: { user: UserBrief }) => ({ id: m.user.id, name: m.user.name })));
+          }
         }
       } catch (e) {
         console.error(e);
       }
     };
     load();
-  }, [API_URL, user]);
+  }, [user]);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token || !teamId) return;
+    if (!teamId) return;
     const fetchTasks = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`${API_URL}/tasks?teamId=${teamId}`, { headers: { Authorization: `Bearer ${token}` } });
+        const res = await fetch(`/api/tasks?teamId=${teamId}`, { credentials: 'include' });
         const data = await res.json();
         setTasks(Array.isArray(data) ? data : []);
         // also load my tasks
-        const resMy = await fetch(`${API_URL}/tasks/my`, { headers: { Authorization: `Bearer ${token}` } });
-        const dataMy = await resMy.json();
-        setTasksMy(Array.isArray(dataMy) ? dataMy : []);
-        // load focus logs (active timers simulated: logs with no endTime)
-        const logsRes = await fetch(`${API_URL}/focus`, { headers: { Authorization: `Bearer ${token}` } });
-        const logs = await logsRes.json();
-        const active = Array.isArray(logs) ? logs.filter((l) => !l.endTime).length : 0;
-        setActiveTimers(active);
+        const resMy = await fetch(`/api/tasks?assignedToId=me`, { credentials: 'include' });
+        if (resMy.ok) {
+          const dataMy = await resMy.json();
+          setTasksMy(Array.isArray(dataMy) ? dataMy : []);
+        }
+        // load active timers
+        const activeRes = await fetch(`/api/focus/active?teamId=${teamId}`, { credentials: 'include' });
+        if (activeRes.ok) {
+          const active = await activeRes.json();
+          setActiveTimers(Array.isArray(active) ? active.length : 0);
+        }
       } catch (e) {
         console.error(e);
       } finally {
@@ -115,7 +118,7 @@ export default function TasksPage({ onNavigate, onLogout: _onLogout }: TasksPage
       }
     };
     fetchTasks();
-  }, [API_URL, teamId]);
+  }, [teamId]);
 
   const sourceTasks: TaskType[] = showMine ? tasksMy : tasks;
 
@@ -128,11 +131,11 @@ export default function TasksPage({ onNavigate, onLogout: _onLogout }: TasksPage
   }, [sourceTasks]);
 
   const createTask = async (payload: { title: string; description?: string; dueDate?: string; assignedToId?: string }) => {
-    const token = localStorage.getItem('token');
-    if (!token || !teamId) return;
-    const res = await fetch(`${API_URL}/tasks`, {
+    if (!teamId) return;
+    const res = await fetch('/api/tasks', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({ teamId, ...payload }),
     });
     const data: TaskType | { error?: string } = await res.json();
@@ -141,17 +144,17 @@ export default function TasksPage({ onNavigate, onLogout: _onLogout }: TasksPage
     setTasks((prev) => [data as TaskType, ...prev]);
     // Ensure server is source of truth
     try {
-      const refreshed = await fetch(`${API_URL}/tasks?teamId=${teamId}`, { headers: { Authorization: `Bearer ${token}` } });
+      const refreshed = await fetch(`/api/tasks?teamId=${teamId}`, { credentials: 'include' });
       const refreshedData = await refreshed.json();
       if (Array.isArray(refreshedData)) setTasks(refreshedData);
     } catch {}
   };
 
   const updateTask = async (id: string, updates: Partial<TaskType> & { status?: TaskType['status']; assignedToId?: string | null; dueDate?: string | null }) => {
-    const token = localStorage.getItem('token');
-    const res = await fetch(`${API_URL}/tasks/${id}`, {
+    const res = await fetch(`/api/tasks/${id}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify(updates),
     });
     const data: TaskType | { error?: string } = await res.json();
@@ -160,8 +163,7 @@ export default function TasksPage({ onNavigate, onLogout: _onLogout }: TasksPage
   };
 
   const deleteTask = async (id: string) => {
-    const token = localStorage.getItem('token');
-    const res = await fetch(`${API_URL}/tasks/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+    const res = await fetch(`/api/tasks/${id}`, { method: 'DELETE', credentials: 'include' });
     if (!res.ok) {
       const data = await res.json();
       throw new Error(data.error || 'Failed to delete task');

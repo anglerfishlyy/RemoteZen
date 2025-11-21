@@ -22,7 +22,6 @@ export default function QuickTimerModal({ isOpen, onClose }: QuickTimerModalProp
   const [isLoading, setIsLoading] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
   const [message, setMessage] = useState('');
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
   useEffect(() => {
     if (isOpen) {
@@ -31,24 +30,27 @@ export default function QuickTimerModal({ isOpen, onClose }: QuickTimerModalProp
   }, [isOpen]);
 
   const loadTasks = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
-
     try {
       setIsLoading(true);
-      const meRes = await fetch(`${API_URL}/auth/me`, { 
-        headers: { Authorization: `Bearer ${token}` } 
+      const meRes = await fetch('/api/user/me', { 
+        credentials: 'include'
       });
+      
+      if (!meRes.ok) {
+        setMessage('Failed to load user data');
+        return;
+      }
+      
       const me = await meRes.json();
-      const team = me?.teams?.[0];
+      const team = me?.user?.teams?.[0]?.team;
       
       if (!team) {
         setMessage('No team found');
         return;
       }
 
-      const tasksRes = await fetch(`${API_URL}/tasks?teamId=${team.id}`, {
-        headers: { Authorization: `Bearer ${token}` }
+      const tasksRes = await fetch(`/api/tasks?teamId=${team.id}`, {
+        credentials: 'include'
       });
       
       if (tasksRes.ok) {
@@ -69,19 +71,16 @@ export default function QuickTimerModal({ isOpen, onClose }: QuickTimerModalProp
       return;
     }
 
-    const token = localStorage.getItem('token');
-    if (!token) return;
-
     try {
       setIsStarting(true);
       setMessage('');
 
-      const response = await fetch(`${API_URL}/focus/start`, {
+      const response = await fetch('/api/focus/start', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
         },
+        credentials: 'include',
         body: JSON.stringify({ taskId: selectedTask })
       });
 

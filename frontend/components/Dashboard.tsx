@@ -7,8 +7,8 @@ import { Button } from './ui/button';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { Badge } from './ui/badge';
 import { Progress } from './ui/progress';
-import { useAuth } from '@/app/providers';
 import { PRODUCTIVITY_CONFIG, UI_CONFIG } from '@/lib/config';
+import { useSession } from "next-auth/react";
 import { 
   Plus, 
   CheckSquare, 
@@ -30,8 +30,8 @@ interface DashboardProps {
 }
 
 export default function Dashboard({ onNavigate, onLogout: _onLogout }: DashboardProps) {
-  const { user } = useAuth()
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
+  const { data: session, status } = useSession();
+  const user = session?.user;
 
   type ApiTask = { id: string; title: string; status?: 'PENDING'|'IN_PROGRESS'|'DONE'; teamId: string; assignedToId?: string|null }
   type ActiveTimer = { id: string; startedAt: string; user: { id: string; name: string }; task: { id: string; title: string } }
@@ -44,43 +44,50 @@ export default function Dashboard({ onNavigate, onLogout: _onLogout }: Dashboard
 
   // bootstrap: load team, tasks, analytics
   useEffect(() => {
-    const token = localStorage.getItem('token')
-    if (!token || !user) return
+    if (!user) return
     const initialize = async () => {
       try {
-        const meRes = await fetch(`${API_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
+        const meRes = await fetch('/api/user/me', { credentials: 'include' })
+        if (!meRes.ok) return
         const me = await meRes.json()
-        const firstTeam = me?.teams?.[0]
+        const firstTeam = me?.user?.teams?.[0]?.team
         if (!firstTeam) return
         setTeamId(firstTeam.id)
 
-        const tRes = await fetch(`${API_URL}/tasks?teamId=${firstTeam.id}`, { headers: { Authorization: `Bearer ${token}` } })
+        const tRes = await fetch(`/api/tasks?teamId=${firstTeam.id}`, { credentials: 'include' })
         const tData = await tRes.json()
         setTasks(Array.isArray(tData) ? tData : [])
 
+        // Calculate productivity from focus logs
         const now = new Date();
         const weekAgo = new Date(now.getTime() - 7*24*60*60*1000);
-        const pRes = await fetch(`${API_URL}/analytics/productivity?teamId=${firstTeam.id}&from=${weekAgo.toISOString()}&to=${now.toISOString()}`, { headers: { Authorization: `Bearer ${token}` } })
-        if (pRes.ok) {
-          const p = await pRes.json()
-          setProductivity(p)
+        const logsRes = await fetch('/api/focus', { credentials: 'include' })
+        if (logsRes.ok) {
+          const logs = await logsRes.json()
+          const teamLogs = Array.isArray(logs) ? logs.filter((l: any) => l.startTime >= weekAgo.toISOString()) : []
+          const totalSeconds = teamLogs.reduce((sum: number, l: any) => sum + (l.duration || 0), 0)
+          const completedTasks = tasks.filter(t => t.status === 'DONE').length
+          setProductivity({
+            totalFocusSeconds: totalSeconds,
+            tasksCompleted: completedTasks,
+            avgFocusPerUser: totalSeconds / Math.max(1, me?.user?.teams?.length || 1)
+          })
         }
       } catch (e) { console.error(e) }
     }
     initialize()
-  }, [API_URL, user])
+  }, [user])
 
   // poll active timers and refresh tasks periodically
   useEffect(() => {
-    const token = localStorage.getItem('token')
-    if (!token || !teamId) return
+    if (!teamId) return
     const refresh = async () => {
       try {
-        const aRes = await fetch(`${API_URL}/focus/active?teamId=${teamId}`, { headers: { Authorization: `Bearer ${token}` } })
+        const aRes = await fetch(`/api/focus/active?teamId=${teamId}`, { credentials: 'include' })
         const a = await aRes.json()
         setActiveTimers(Array.isArray(a) ? a : [])
 
-        const tRes = await fetch(`${API_URL}/tasks?teamId=${teamId}`, { headers: { Authorization: `Bearer ${token}` } })
+        const tRes = await fetch(`/api/tasks?teamId=${teamId}`, { credentials: 'include' })
         const tData = await tRes.json()
         setTasks(Array.isArray(tData) ? tData : [])
       } catch (e) { console.error(e) }
@@ -88,7 +95,7 @@ export default function Dashboard({ onNavigate, onLogout: _onLogout }: Dashboard
     refresh()
     const interval = setInterval(refresh, UI_CONFIG.POLLING_INTERVAL)
     return () => clearInterval(interval)
-  }, [API_URL, teamId])
+  }, [teamId])
 
   const myFirstName = useMemo(() => (user?.name || '').split(' ')[0] || 'there', [user?.name])
   const totalTasks = tasks.length

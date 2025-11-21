@@ -24,13 +24,12 @@ export default function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
     setSubmitStatus('idle');
 
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/feedback`, {
+      const response = await fetch('/api/feedback', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(token && { Authorization: `Bearer ${token}` })
         },
+        credentials: 'include',
         body: JSON.stringify({
           name: formData.name.trim() || null,
           email: formData.email.trim() || null,
