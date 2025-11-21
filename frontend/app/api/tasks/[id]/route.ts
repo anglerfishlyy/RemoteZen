@@ -1,17 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/authOptions";
+import { auth } from "@/app/api/auth/auth";
 import { prisma } from "@/lib/prisma";
 
 // ---------------------- GET TASK ----------------------
-export async function GET(
+export const GET = async (
   req: NextRequest,
-  context: { params: { id: string } }
-) {
-  const { id } = context.params;
+  { params }: { params: { id: string } }
+) => {
+  const { id } = params;
 
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
 
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -52,17 +51,17 @@ export async function GET(
       { status: 500 }
     );
   }
-}
+};
 
 // ---------------------- UPDATE TASK ----------------------
-export async function PATCH(
+export const PATCH = async (
   req: NextRequest,
-  context: { params: { id: string } }
-) {
-  const { id } = context.params;
+  { params }: { params: { id: string } }
+) => {
+  const { id } = params;
 
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
 
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -119,17 +118,17 @@ export async function PATCH(
       { status: 500 }
     );
   }
-}
+};
 
 // ---------------------- DELETE TASK ----------------------
-export async function DELETE(
+export const DELETE = async (
   req: NextRequest,
-  context: { params: { id: string } }
-) {
-  const { id } = context.params;
+  { params }: { params: { id: string } }
+) => {
+  const { id } = params;
 
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
 
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -180,4 +179,4 @@ export async function DELETE(
       { status: 500 }
     );
   }
-}
+};
