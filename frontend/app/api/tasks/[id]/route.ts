@@ -3,13 +3,19 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/authOptions";
 import { prisma } from "@/lib/prisma";
 
+// Helper to extract `id` from the URL pathname
+function getIdFromRequest(req: NextRequest) {
+  const pathname = req.nextUrl.pathname; // /api/tasks/<id>
+  const parts = pathname.split("/");
+  return parts[parts.length - 1];
+}
+
 // ---------------------- GET TASK ----------------------
-export async function GET(req: NextRequest, context: any) {
-  const { id } = context.params;
+export async function GET(req: NextRequest) {
+  const id = getIdFromRequest(req);
 
   try {
     const session = await getServerSession(authOptions);
-
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -22,13 +28,11 @@ export async function GET(req: NextRequest, context: any) {
         assignedTo: { select: { id: true, name: true, email: true } },
       },
     });
-
     if (!task) return NextResponse.json({ error: "Task not found" }, { status: 404 });
 
     const teamMember = await prisma.teamMember.findFirst({
       where: { teamId: task.teamId, userId: session.user.id },
     });
-
     if (!teamMember) return NextResponse.json({ error: "You are not a member of this team" }, { status: 403 });
 
     return NextResponse.json(task);
@@ -38,13 +42,12 @@ export async function GET(req: NextRequest, context: any) {
   }
 }
 
-// ---------------------- UPDATE TASK ----------------------
-export async function PATCH(req: NextRequest, context: any) {
-  const { id } = context.params;
+// ---------------------- PATCH TASK ----------------------
+export async function PATCH(req: NextRequest) {
+  const id = getIdFromRequest(req);
 
   try {
     const session = await getServerSession(authOptions);
-
     if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await req.json();
@@ -83,12 +86,11 @@ export async function PATCH(req: NextRequest, context: any) {
 }
 
 // ---------------------- DELETE TASK ----------------------
-export async function DELETE(req: NextRequest, context: any) {
-  const { id } = context.params;
+export async function DELETE(req: NextRequest) {
+  const id = getIdFromRequest(req);
 
   try {
     const session = await getServerSession(authOptions);
-
     if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const task = await prisma.task.findUnique({ where: { id } });
