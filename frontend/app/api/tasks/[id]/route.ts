@@ -4,11 +4,8 @@ import { authOptions } from "@/app/api/auth/authOptions";
 import { prisma } from "@/lib/prisma";
 
 // ---------------------- GET TASK ----------------------
-export async function GET(
-  req: NextRequest,
-  { params }: { params: { id: string } } // correct typing for Next.js route handlers
-) {
-  const { id } = params;
+export async function GET(req: NextRequest, context: { params: { id: string } }) {
+  const id = context.params.id;
 
   try {
     const session = await getServerSession(authOptions);
@@ -42,11 +39,8 @@ export async function GET(
 }
 
 // ---------------------- UPDATE TASK ----------------------
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  const { id } = params;
+export async function PATCH(req: NextRequest, context: { params: { id: string } }) {
+  const id = context.params.id;
 
   try {
     const session = await getServerSession(authOptions);
@@ -89,11 +83,8 @@ export async function PATCH(
 }
 
 // ---------------------- DELETE TASK ----------------------
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  const { id } = params;
+export async function DELETE(req: NextRequest, context: { params: { id: string } }) {
+  const id = context.params.id;
 
   try {
     const session = await getServerSession(authOptions);
