@@ -4,8 +4,8 @@ import { authOptions } from "@/app/api/auth/authOptions";
 import { prisma } from "@/lib/prisma";
 
 // ---------------------- GET TASK ----------------------
-export async function GET(req: NextRequest, context: { params: { id: string } }) {
-  const id = context.params.id;
+export async function GET(req: NextRequest, context: any) {
+  const { id } = context.params;
 
   try {
     const session = await getServerSession(authOptions);
@@ -39,8 +39,8 @@ export async function GET(req: NextRequest, context: { params: { id: string } })
 }
 
 // ---------------------- UPDATE TASK ----------------------
-export async function PATCH(req: NextRequest, context: { params: { id: string } }) {
-  const id = context.params.id;
+export async function PATCH(req: NextRequest, context: any) {
+  const { id } = context.params;
 
   try {
     const session = await getServerSession(authOptions);
@@ -83,8 +83,8 @@ export async function PATCH(req: NextRequest, context: { params: { id: string } 
 }
 
 // ---------------------- DELETE TASK ----------------------
-export async function DELETE(req: NextRequest, context: { params: { id: string } }) {
-  const id = context.params.id;
+export async function DELETE(req: NextRequest, context: any) {
+  const { id } = context.params;
 
   try {
     const session = await getServerSession(authOptions);
