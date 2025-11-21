@@ -1,13 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/authOptions";
-import { getServerSession } from "next-auth"
 import { prisma } from "@/lib/prisma";
 
 // ---------------------- GET TASK ----------------------
-export const GET = async (
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) => {
+export async function GET(req: NextRequest, { params }: { params: Record<string, string> }) {
   const { id } = params;
 
   try {
@@ -31,38 +28,26 @@ export const GET = async (
     }
 
     const teamMember = await prisma.teamMember.findFirst({
-      where: {
-        teamId: task.teamId,
-        userId: session.user.id,
-      },
+      where: { teamId: task.teamId, userId: session.user.id },
     });
 
     if (!teamMember) {
-      return NextResponse.json(
-        { error: "You are not a member of this team" },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: "You are not a member of this team" }, { status: 403 });
     }
 
     return NextResponse.json(task);
   } catch (error) {
     console.error("Get task error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
-};
+}
 
 // ---------------------- UPDATE TASK ----------------------
-export const PATCH = async (
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) => {
+export async function PATCH(req: NextRequest, { params }: { params: Record<string, string> }) {
   const { id } = params;
 
   try {
-    const session = await auth();
+    const session = await getServerSession(authOptions);
 
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -71,35 +56,22 @@ export const PATCH = async (
     const body = await req.json();
     const { title, description, status, assignedToId, dueDate } = body;
 
-    const existingTask = await prisma.task.findUnique({
-      where: { id },
-    });
+    const existingTask = await prisma.task.findUnique({ where: { id } });
 
-    if (!existingTask) {
-      return NextResponse.json({ error: "Task not found" }, { status: 404 });
-    }
+    if (!existingTask) return NextResponse.json({ error: "Task not found" }, { status: 404 });
 
     const teamMember = await prisma.teamMember.findFirst({
-      where: {
-        teamId: existingTask.teamId,
-        userId: session.user.id,
-      },
+      where: { teamId: existingTask.teamId, userId: session.user.id },
     });
 
-    if (!teamMember) {
-      return NextResponse.json(
-        { error: "You are not a member of this team" },
-        { status: 403 }
-      );
-    }
+    if (!teamMember) return NextResponse.json({ error: "You are not a member of this team" }, { status: 403 });
 
     const updateData: any = {};
     if (title !== undefined) updateData.title = title;
     if (description !== undefined) updateData.description = description;
     if (status !== undefined) updateData.status = status;
     if (assignedToId !== undefined) updateData.assignedToId = assignedToId;
-    if (dueDate !== undefined)
-      updateData.dueDate = dueDate ? new Date(dueDate) : null;
+    if (dueDate !== undefined) updateData.dueDate = dueDate ? new Date(dueDate) : null;
 
     const task = await prisma.task.update({
       where: { id },
@@ -114,70 +86,36 @@ export const PATCH = async (
     return NextResponse.json(task);
   } catch (error) {
     console.error("Update task error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
-};
+}
 
 // ---------------------- DELETE TASK ----------------------
-export const DELETE = async (
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) => {
+export async function DELETE(req: NextRequest, { params }: { params: Record<string, string> }) {
   const { id } = params;
 
   try {
-    const session = await auth();
+    const session = await getServerSession(authOptions);
 
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const task = await prisma.task.findUnique({
-      where: { id },
-    });
-
-    if (!task) {
-      return NextResponse.json({ error: "Task not found" }, { status: 404 });
-    }
+    const task = await prisma.task.findUnique({ where: { id } });
+    if (!task) return NextResponse.json({ error: "Task not found" }, { status: 404 });
 
     const teamMember = await prisma.teamMember.findFirst({
-      where: {
-        teamId: task.teamId,
-        userId: session.user.id,
-      },
+      where: { teamId: task.teamId, userId: session.user.id },
     });
 
-    if (!teamMember) {
-      return NextResponse.json(
-        { error: "You are not a member of this team" },
-        { status: 403 }
-      );
+    if (!teamMember) return NextResponse.json({ error: "You are not a member of this team" }, { status: 403 });
+
+    if (task.createdById !== session.user.id && teamMember.role !== "ADMIN" && teamMember.role !== "MANAGER") {
+      return NextResponse.json({ error: "Only the creator or team admin can delete this task" }, { status: 403 });
     }
 
-    if (
-      task.createdById !== session.user.id &&
-      teamMember.role !== "ADMIN" &&
-      teamMember.role !== "MANAGER"
-    ) {
-      return NextResponse.json(
-        { error: "Only the creator or team admin can delete this task" },
-        { status: 403 }
-      );
-    }
-
-    await prisma.task.delete({
-      where: { id },
-    });
-
+    await prisma.task.delete({ where: { id } });
     return NextResponse.json({ message: "Task deleted successfully" });
   } catch (error) {
     console.error("Delete task error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
-};
+}
