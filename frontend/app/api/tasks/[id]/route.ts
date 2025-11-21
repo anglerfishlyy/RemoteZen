@@ -4,7 +4,10 @@ import { authOptions } from "@/app/api/auth/authOptions";
 import { prisma } from "@/lib/prisma";
 
 // ---------------------- GET TASK ----------------------
-export async function GET(req: NextRequest, { params }: { params: Record<string, string> }) {
+export async function GET(
+  req: NextRequest,
+  { params }: { params: { id: string } } // correct typing for Next.js route handlers
+) {
   const { id } = params;
 
   try {
@@ -23,17 +26,13 @@ export async function GET(req: NextRequest, { params }: { params: Record<string,
       },
     });
 
-    if (!task) {
-      return NextResponse.json({ error: "Task not found" }, { status: 404 });
-    }
+    if (!task) return NextResponse.json({ error: "Task not found" }, { status: 404 });
 
     const teamMember = await prisma.teamMember.findFirst({
       where: { teamId: task.teamId, userId: session.user.id },
     });
 
-    if (!teamMember) {
-      return NextResponse.json({ error: "You are not a member of this team" }, { status: 403 });
-    }
+    if (!teamMember) return NextResponse.json({ error: "You are not a member of this team" }, { status: 403 });
 
     return NextResponse.json(task);
   } catch (error) {
@@ -43,27 +42,26 @@ export async function GET(req: NextRequest, { params }: { params: Record<string,
 }
 
 // ---------------------- UPDATE TASK ----------------------
-export async function PATCH(req: NextRequest, { params }: { params: Record<string, string> }) {
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
   const { id } = params;
 
   try {
     const session = await getServerSession(authOptions);
 
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await req.json();
     const { title, description, status, assignedToId, dueDate } = body;
 
     const existingTask = await prisma.task.findUnique({ where: { id } });
-
     if (!existingTask) return NextResponse.json({ error: "Task not found" }, { status: 404 });
 
     const teamMember = await prisma.teamMember.findFirst({
       where: { teamId: existingTask.teamId, userId: session.user.id },
     });
-
     if (!teamMember) return NextResponse.json({ error: "You are not a member of this team" }, { status: 403 });
 
     const updateData: any = {};
@@ -91,7 +89,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Record<strin
 }
 
 // ---------------------- DELETE TASK ----------------------
-export async function DELETE(req: NextRequest, { params }: { params: Record<string, string> }) {
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
   const { id } = params;
 
   try {
@@ -105,10 +106,13 @@ export async function DELETE(req: NextRequest, { params }: { params: Record<stri
     const teamMember = await prisma.teamMember.findFirst({
       where: { teamId: task.teamId, userId: session.user.id },
     });
-
     if (!teamMember) return NextResponse.json({ error: "You are not a member of this team" }, { status: 403 });
 
-    if (task.createdById !== session.user.id && teamMember.role !== "ADMIN" && teamMember.role !== "MANAGER") {
+    if (
+      task.createdById !== session.user.id &&
+      teamMember.role !== "ADMIN" &&
+      teamMember.role !== "MANAGER"
+    ) {
       return NextResponse.json({ error: "Only the creator or team admin can delete this task" }, { status: 403 });
     }
 
