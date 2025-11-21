@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Get session if available (optional - feedback can be anonymous)
-    const session = await getServerSession(auth)
+    const session = await getServerSession(authOptions)
     const userId = session?.user?.id || null
 
     const feedback = await prisma.feedback.create({
