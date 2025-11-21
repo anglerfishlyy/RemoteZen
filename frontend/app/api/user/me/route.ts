@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
-import { authOptions } from "@/app/api/auth/[...nextauth]/route"
+import { auth } from "@/app/api/auth/[...nextauth]/route"
 import {prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
 
 export async function GET(req: NextRequest) {
   try {
-    const session = await getServerSession({ req, res: NextResponse.next() }, authOptions)
+    const session = await getServerSession({ req, res: NextResponse.next() }, auth)
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const session = await getServerSession(auth)
 
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })

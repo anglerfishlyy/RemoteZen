@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
-import { authOptions } from "@/app/api/auth/[...nextauth]/route"
+import { auth } from "@/app/api/auth/[...nextauth]/route"
 import { prisma } from "@/lib/prisma"
 
 export async function POST(req: NextRequest) {
@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Get session if available (optional - feedback can be anonymous)
-    const session = await getServerSession(authOptions)
+    const session = await getServerSession(auth)
     const userId = session?.user?.id || null
 
     const feedback = await prisma.feedback.create({

@@ -1,4 +1,4 @@
-import NextAuth from "next-auth";
+import NextAuth, { type NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import GitHubProvider from "next-auth/providers/github";
 import CredentialsProvider from "next-auth/providers/credentials";
@@ -6,23 +6,25 @@ import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 
-// MUST be called "auth" (NOT authOptions)
-export const auth = {
+export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   session: {
-    strategy: "jwt",
+    strategy: "jwt", // Using JWT strategy for custom User model compatibility
   },
   providers: [
+    // ---------------- GOOGLE LOGIN ----------------
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID || "",
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
     }),
 
+    // ---------------- GITHUB LOGIN ----------------
     GitHubProvider({
       clientId: process.env.GITHUB_CLIENT_ID || "",
       clientSecret: process.env.GITHUB_CLIENT_SECRET || "",
     }),
 
+    // ---------------- EMAIL/PASSWORD LOGIN ----------------
     CredentialsProvider({
       name: "email-password",
       credentials: {
@@ -40,6 +42,7 @@ export const auth = {
 
         if (!user) throw new Error("Invalid credentials");
 
+        // Check if user has a password (OAuth users have empty passwordHash)
         if (!user.passwordHash) {
           throw new Error("Please sign in with Google or GitHub");
         }
@@ -61,30 +64,39 @@ export const auth = {
     }),
   ],
 
+  // JWT CALLBACK (session control) 
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, account }) {
+      // User logged in (OAuth or Credentials)
       if (user) {
         token.id = user.id;
         token.email = user.email;
         token.name = user.name;
-        if ("role" in user) token.role = user.role;
+        if ('role' in user) {
+          token.role = user.role;
+        }
       }
+
       return token;
     },
 
     async session({ session, token }) {
-      if (session.user) {
+      if (token && session.user) {
         session.user.id = token.id as string;
         session.user.email = token.email as string;
         session.user.name = token.name as string;
-        if (token.role) (session.user as any).role = token.role;
+        if (token.role) {
+          (session.user as any).role = token.role;
+        }
       }
-      return session;
-    },
 
-    async redirect() {
-      return "/dashboard";
+      return session;
+      
     },
+    async redirect({ url, baseUrl }) {
+      // Always send user to dashboard after login
+      return "/dashboard";
+    }
   },
 
   pages: {
@@ -95,5 +107,5 @@ export const auth = {
   secret: process.env.NEXTAUTH_SECRET,
 };
 
-// NextAuth v5 handler export pattern
-export const { handlers: { GET, POST } } = NextAuth(auth);
+const handler = NextAuth(authOptions);
+export { handler as GET, handler as POST };
