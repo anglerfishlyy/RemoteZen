@@ -1,21 +1,20 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/app/api/auth/authOptions"
-import {prisma } from "@/lib/prisma"
+import { prisma } from "@/lib/prisma"
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const url = new URL(req.url)
+    const id = url.pathname.split("/")[4] // extract [id] from /api/teams/[id]
 
+    const session = await getServerSession(authOptions)
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
     const team = await prisma.team.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         members: {
           include: {
@@ -35,28 +34,17 @@ export async function GET(
       return NextResponse.json({ error: "Team not found" }, { status: 404 })
     }
 
-    // Verify user is a member
     const isMember = team.members.some((m) => m.userId === session.user.id)
-
     if (!isMember) {
-      return NextResponse.json(
-        { error: "You are not a member of this team" },
-        { status: 403 }
-      )
+      return NextResponse.json({ error: "You are not a member of this team" }, { status: 403 })
     }
 
     return NextResponse.json(team)
   } catch (error) {
     console.error("Get team error:", error)
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
-
-
-
 
 
 
