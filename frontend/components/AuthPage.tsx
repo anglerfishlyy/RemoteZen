@@ -22,12 +22,13 @@ import {
   BarChart3
 } from 'lucide-react'
 import { useAuth } from '@/app/providers'
+import { signIn } from 'next-auth/react'
 
 type NavigateFunction = (page: 'landing' | 'analytics' | 'login' | 'dashboard' | 'tasks' | 'timer' | 'profile') => void;
 
 export default function AuthPage() {
   const router = useRouter()
-  const { login, signup } = useAuth()
+  const { logout, user, isAuthenticated, addNotification } = useAuth()
 
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -71,16 +72,34 @@ export default function AuthPage() {
       const password = (form.elements.namedItem("password") as HTMLInputElement).value
 
       if (activeTab === 'login') {
-        await login(email, password)
+        await signIn("credentials", {
+          redirect: false,
+          email,
+          password,
+        }).then((res) => {
+          if (res?.error) {
+            addNotification({ title: "Login failed", body: res.error, type: "error" })
+          } else {
+            router.push("/dashboard")
+          }
+        })
       } else {
-        const name = (form.elements.namedItem("name") as HTMLInputElement).value
-        await signup(name, email, password)
+        // call custom signup API endpoint
+        const res = await fetch("/api/auth/signup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, email, password }),
+        })
+        if (res.ok) {
+          await signIn("credentials", { redirect: false, email, password })
+          router.push("/dashboard")
+        } else {
+          addNotification({ title: "Signup failed", body: await res.text(), type: "error" })
+        }
       }
-
-      router.push('/dashboard') // redirect after successful login/signup
     } catch (err) {
       console.error(err)
-      // optionally show a toast or alert here
+      addNotification({ title: "Error", body: "An error occurred", type: "error" })
     } finally {
       setIsLoading(false)
     }

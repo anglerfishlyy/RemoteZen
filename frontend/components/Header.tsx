@@ -24,6 +24,7 @@ interface HeaderProps {
   currentPage: string;
   onNavigate: NavigateFunction;
   onToggleSidebar?: () => void;
+  onLogout?: () => void;
 }
 
 export default function Header({ currentPage, onNavigate, onToggleSidebar }: HeaderProps) {

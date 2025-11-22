@@ -10,8 +10,7 @@ RemoteZen helps remote teams stay focused and aligned with a simple dashboard fo
 - Real-time dashboard updates & analytics
 
 ## Tech Stack
-- **Frontend:** Next.js (React, TailwindCSS)  
-- **Backend:** Node.js, Express, Prisma, JWT Auth  
+- **Frontend:** Next.js (React, TailwindCSS, NextAuth)  
 - **Database:** PostgreSQL  
 - **Deployment:** Vercel
 
