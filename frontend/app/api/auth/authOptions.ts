@@ -4,6 +4,7 @@ import GitHubProvider from "next-auth/providers/github";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
+import { randomUUID } from "crypto";
 import bcrypt from "bcryptjs";
 
 export const authOptions: NextAuthOptions = {
@@ -60,6 +61,7 @@ export const authOptions: NextAuthOptions = {
         token.email = user.email;
         token.name = user.name;
         token.role = (user as any).role;
+        token.accessToken = crypto.randomUUID();
       }
       return token;
     },
@@ -71,6 +73,7 @@ export const authOptions: NextAuthOptions = {
         session.user.name = token.name as string;
         (session.user as any).role = token.role;
       }
+      (session as any).accessToken = token.accessToken;
       return session;
     },
 
