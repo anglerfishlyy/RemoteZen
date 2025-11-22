@@ -18,7 +18,7 @@ import {
 } from 'lucide-react'
 import { Span } from 'next/dist/trace';
 
-type NavigateFunction = (page: string) => void;
+type NavigateFunction = (page: 'landing' | 'analytics' | 'login' | 'dashboard' | 'tasks' | 'timer' | 'profile') => void;
 
 interface LandingPageProps {
   onNavigate: NavigateFunction;

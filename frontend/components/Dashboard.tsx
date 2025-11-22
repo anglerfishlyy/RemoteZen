@@ -7,7 +7,7 @@ import { Button } from './ui/button';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { Badge } from './ui/badge';
 import { Progress } from './ui/progress';
-import { PRODUCTIVITY_CONFIG } from '@/lib/config';
+import { PRODUCTIVITY_CONFIG, UI_CONFIG } from '@/lib/config';
 import { useSession } from "next-auth/react";
 import { 
   Plus, 

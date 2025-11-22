@@ -18,6 +18,7 @@ export default function LandingPagePage() {
       case 'tasks': router.push('/tasks'); break
       case 'timer': router.push('/timer'); break
       case 'profile': router.push('/profile'); break
+      default: router.push('/'); break
     }
   }
 
