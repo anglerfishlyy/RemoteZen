@@ -46,8 +46,8 @@ export const authOptions: NextAuthOptions = {
 
         return {
           id: user.id,
-          email: user.email,
-          name: user.name,
+          email: user.email ?? "",
+          name: user.name ?? "",
           role: user.role,
         };
       },
@@ -58,8 +58,8 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
-        token.email = user.email;
-        token.name = user.name;
+        token.email = user.email ?? "";
+        token.name = user.name ?? "";
         token.role = (user as any).role;
         token.accessToken = crypto.randomUUID();
       }
@@ -69,8 +69,8 @@ export const authOptions: NextAuthOptions = {
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.id as string;
-        session.user.email = token.email as string;
-        session.user.name = token.name as string;
+        session.user.email = (token.email as string) ?? "";
+        session.user.name = (token.name as string) ?? "";
         (session.user as any).role = token.role;
       }
       (session as any).accessToken = token.accessToken;
