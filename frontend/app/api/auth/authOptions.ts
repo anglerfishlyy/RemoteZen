@@ -120,6 +120,33 @@ export const authOptions: NextAuthOptions = {
 
           // Update user.id so JWT callback gets the correct ID
           user.id = dbUser.id;
+          // Fix: Update user object with database values to ensure correct session
+          user.email = dbUser.email;
+          user.name = dbUser.name;
+
+          // Fix: Create default team for new OAuth users if they don't have any teams
+          const isNewUser = !(await prisma.teamMember.findFirst({
+            where: { userId: dbUser.id },
+          }));
+
+          if (isNewUser) {
+            // Create a personal team for the user
+            const personalTeam = await prisma.team.create({
+              data: {
+                name: `${dbUser.name}'s Team`,
+                members: {
+                  create: {
+                    userId: dbUser.id,
+                    role: "ADMIN",
+                  },
+                },
+              },
+            });
+            console.log(`[NextAuth] Created default team for new OAuth user:`, {
+              userId: dbUser.id,
+              teamId: personalTeam.id,
+            });
+          }
 
           // Manually link account (PrismaAdapter handles this with database sessions, but with JWT we need to do it)
           if (account.providerAccountId) {
@@ -171,10 +198,9 @@ export const authOptions: NextAuthOptions = {
     },
 
     // JWT callback - called when JWT is created or updated
-    // Fix: Properly handle OAuth account data and ensure user data is persisted
+    // Fix: Always fetch fresh user data from database to ensure correct session
     async jwt({ token, user, account, profile }) {
       // Initial sign in - account and user are only available on first call
-      // Fix: Check for account first to detect OAuth sign-in
       if (account && user) {
         // Persist the OAuth access_token to the token right after signin
         if (account.access_token) {
@@ -186,38 +212,81 @@ export const authOptions: NextAuthOptions = {
           token.refreshToken = account.refresh_token;
         }
 
-        // Persist user id - user.id is set in signIn callback for OAuth
+        // Fix: Always fetch fresh user data from database using user.id
+        // This ensures we get the correct email, name, and role from the database
         if (user.id) {
-          token.id = user.id;
-          token.email = user.email ?? "";
-          token.name = user.name ?? "";
-          token.role = (user as any).role;
+          try {
+            const dbUser = await prisma.user.findUnique({
+              where: { id: user.id },
+              select: { id: true, name: true, email: true, role: true },
+            });
+            if (dbUser) {
+              token.id = dbUser.id;
+              token.email = dbUser.email;
+              token.name = dbUser.name;
+              token.role = dbUser.role;
+            } else {
+              // Fallback to user object if DB fetch fails
+              token.id = user.id;
+              token.email = user.email ?? "";
+              token.name = user.name ?? "";
+              token.role = (user as any).role;
+            }
+          } catch (error) {
+            console.error("Error fetching user by ID in JWT callback:", error);
+            // Fallback to user object
+            token.id = user.id;
+            token.email = user.email ?? "";
+            token.name = user.name ?? "";
+            token.role = (user as any).role;
+          }
         }
       }
       // For credentials provider, user object is available without account
       else if (user) {
-        token.id = user.id;
-        token.email = user.email ?? "";
-        token.name = user.name ?? "";
-        token.role = (user as any).role;
+        // Fix: Always fetch fresh user data from database
+        if (user.id) {
+          try {
+            const dbUser = await prisma.user.findUnique({
+              where: { id: user.id },
+              select: { id: true, name: true, email: true, role: true },
+            });
+            if (dbUser) {
+              token.id = dbUser.id;
+              token.email = dbUser.email;
+              token.name = dbUser.name;
+              token.role = dbUser.role;
+            } else {
+              token.id = user.id;
+              token.email = user.email ?? "";
+              token.name = user.name ?? "";
+              token.role = (user as any).role;
+            }
+          } catch (error) {
+            console.error("Error fetching user by ID in JWT callback:", error);
+            token.id = user.id;
+            token.email = user.email ?? "";
+            token.name = user.name ?? "";
+            token.role = (user as any).role;
+          }
+        }
       }
 
-      // Fallback: If token doesn't have user data but has email, fetch from database
-      // Fix: This ensures token is always populated even if callbacks fail
-      if (!token.id && token.email) {
+      // Fix: If token has id but missing other data, refresh from database
+      if (token.id && (!token.email || !token.name)) {
         try {
           const dbUser = await prisma.user.findUnique({
-            where: { email: token.email as string },
+            where: { id: token.id as string },
             select: { id: true, name: true, email: true, role: true },
           });
           if (dbUser) {
             token.id = dbUser.id;
-            token.name = dbUser.name;
             token.email = dbUser.email;
+            token.name = dbUser.name;
             token.role = dbUser.role;
           }
         } catch (error) {
-          console.error("Error fetching user in JWT callback:", error);
+          console.error("Error refreshing user data in JWT callback:", error);
         }
       }
 
@@ -225,8 +294,10 @@ export const authOptions: NextAuthOptions = {
     },
 
     // Session callback - called whenever a session is checked
+    // Fix: Use token data which is already fetched fresh in JWT callback
     async session({ session, token }) {
       // Send properties to the client, like access_token and user id from the token
+      // Fix: Token data is already fresh from JWT callback, so use it directly
       if (session.user && token) {
         session.user.id = token.id as string;
         session.user.email = (token.email as string) ?? "";

@@ -45,6 +45,24 @@ export async function POST(req: NextRequest) {
       },
     })
 
+    // Fix: Create default team for new user
+    const personalTeam = await prisma.team.create({
+      data: {
+        name: `${name}'s Team`,
+        members: {
+          create: {
+            userId: user.id,
+            role: "ADMIN",
+          },
+        },
+      },
+    })
+
+    console.log(`[Register] Created default team for new user:`, {
+      userId: user.id,
+      teamId: personalTeam.id,
+    })
+
     return NextResponse.json(
       { message: "User created successfully", user },
       { status: 201 }

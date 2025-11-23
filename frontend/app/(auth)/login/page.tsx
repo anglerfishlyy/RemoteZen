@@ -26,6 +26,25 @@ export default function LoginPage() {
     setIsLoading(true)
 
     try {
+      // Fix: Check if user exists before attempting sign-in
+      const checkUserRes = await fetch('/api/user/check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      })
+
+      if (checkUserRes.ok) {
+        const checkData = await checkUserRes.json()
+        if (!checkData.exists) {
+          // User doesn't exist, redirect to sign-up
+          setError('Account not found. Please sign up first.')
+          setTimeout(() => {
+            router.push(`/register?email=${encodeURIComponent(email)}`)
+          }, 1500)
+          return
+        }
+      }
+
       const result = await signIn('credentials', {
         email,
         password,
