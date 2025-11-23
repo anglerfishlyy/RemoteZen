@@ -274,7 +274,7 @@ export default function Dashboard({ onNavigate, onLogout: _onLogout }: Dashboard
                         <div className="relative">
                           <Avatar className="w-10 h-10">
                             <AvatarFallback className="bg-gradient-to-br from-blue-400 to-purple-600 text-white text-sm">
-                              {t.user.name?.slice(0,2).toUpperCase()}
+                              {t.user?.name?.slice(0,2).toUpperCase() || 'U'}
                             </AvatarFallback>
                           </Avatar>
                           <div className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-black ${
@@ -282,8 +282,8 @@ export default function Dashboard({ onNavigate, onLogout: _onLogout }: Dashboard
                           }`} />
                         </div>
                         <div className="flex-1">
-                          <p className="text-white text-sm font-medium">{t.user.name}</p>
-                          <p className="text-gray-400 text-xs">{t.task.title}</p>
+                          <p className="text-white text-sm font-medium">{t.user?.name || 'Unknown User'}</p>
+                          <p className="text-gray-400 text-xs">{t.task?.title || 'Unknown Task'}</p>
                         </div>
                         <div className="text-right">
                           <p className="text-gray-400 text-xs">active</p>

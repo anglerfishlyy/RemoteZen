@@ -629,7 +629,7 @@ export default function TimerPage({ onNavigate, onLogout: _onLogout }: TimerPage
                         <div className="relative">
                           <Avatar className="w-10 h-10">
                             <AvatarFallback className="bg-gradient-to-br from-blue-400 to-purple-600 text-white text-sm">
-                              {timer.user.name?.slice(0,2).toUpperCase()}
+                              {timer.user?.name?.slice(0,2).toUpperCase() || 'U'}
                             </AvatarFallback>
                           </Avatar>
                           <div className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-black ${
@@ -637,8 +637,8 @@ export default function TimerPage({ onNavigate, onLogout: _onLogout }: TimerPage
                           }`} />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-white text-sm font-medium truncate">{timer.user.name}</p>
-                          <p className="text-gray-400 text-xs truncate">{timer.task.title}</p>
+                          <p className="text-white text-sm font-medium truncate">{timer.user?.name || 'Unknown User'}</p>
+                          <p className="text-gray-400 text-xs truncate">{timer.task?.title || 'Unknown Task'}</p>
                         </div>
                         <div className="text-right">
                           <p className="text-white text-sm font-mono">{formatSince(timer.startedAt)}</p>

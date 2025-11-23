@@ -30,9 +30,17 @@ export async function GET(req: NextRequest) {
       where.taskId = { in: taskIds }
     }
 
+    // Fix: Include user data in active timers response
     const activeTimers = await prisma.timer.findMany({
       where,
       include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
         task: {
           select: {
             id: true,

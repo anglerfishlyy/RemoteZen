@@ -225,11 +225,14 @@ export const authOptions: NextAuthOptions = {
       // Initial sign in - account and user are only available on first call
       // Fix: Clear any existing token data to prevent mixing old and new user data
       if (account && user) {
-        // Clear old token data by setting to empty strings (will be overwritten below)
-        token.id = "";
-        token.email = "";
-        token.name = "";
+        // Fix: Completely reset token to prevent stale data from previous user
+        // Clear old token properties by setting to undefined/empty
+        token.id = undefined as any;
+        token.email = undefined as any;
+        token.name = undefined as any;
         token.role = undefined;
+        token.accessToken = undefined;
+        token.refreshToken = undefined;
         // Persist the OAuth access_token to the token right after signin
         if (account.access_token) {
           token.accessToken = account.access_token;
@@ -312,25 +315,68 @@ export const authOptions: NextAuthOptions = {
             token.email = dbUser.email;
             token.name = dbUser.name;
             token.role = dbUser.role;
+          } else {
+            // If user not found, clear token to force re-authentication
+            console.error("User not found in database, clearing token");
+            token.id = undefined as any;
+            token.email = undefined as any;
+            token.name = undefined as any;
+            token.role = undefined;
           }
         } catch (error) {
           console.error("Error refreshing user data in JWT callback:", error);
         }
       }
 
+      // Fix: Ensure token always has valid user data, otherwise clear it
+      if (!token.id || !token.email) {
+        console.error("Invalid token state, clearing user data");
+        token.id = undefined as any;
+        token.email = undefined as any;
+        token.name = undefined as any;
+        token.role = undefined;
+      }
+
       return token;
     },
 
     // Session callback - called whenever a session is checked
-    // Fix: Use token data which is already fetched fresh in JWT callback
+    // Fix: Always validate and refresh user data from database
     async session({ session, token }) {
+      // Fix: If token doesn't have valid user data, don't return session
+      if (!token.id || !token.email) {
+        console.error("Invalid token in session callback, returning null session");
+        return null as any;
+      }
+
       // Send properties to the client, like access_token and user id from the token
-      // Fix: Token data is already fresh from JWT callback, so use it directly
+      // Fix: Always fetch fresh user data from database to ensure correct session
       if (session.user && token) {
-        session.user.id = token.id as string;
-        session.user.email = (token.email as string) ?? "";
-        session.user.name = (token.name as string) ?? "";
-        (session.user as any).role = token.role;
+        // Fix: Always fetch fresh user data from database to ensure correct session
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: { id: token.id as string },
+            select: { id: true, name: true, email: true, role: true },
+          });
+          
+          if (dbUser) {
+            session.user.id = dbUser.id;
+            session.user.email = dbUser.email;
+            session.user.name = dbUser.name;
+            (session.user as any).role = dbUser.role;
+          } else {
+            // User not found in database, return null session
+            console.error("User not found in database during session callback");
+            return null as any;
+          }
+        } catch (error) {
+          console.error("Error fetching user in session callback:", error);
+          // Fallback to token data
+          session.user.id = token.id as string;
+          session.user.email = (token.email as string) ?? "";
+          session.user.name = (token.name as string) ?? "";
+          (session.user as any).role = token.role;
+        }
       }
       
       // Expose accessToken to client
