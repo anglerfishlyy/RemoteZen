@@ -107,7 +107,8 @@ export default function Sidebar({ currentPage, onNavigate, collapsed = false }: 
         {/* Navigation */}
         <nav className="space-y-2">
           {navigationItems.map((item, index) => {
-            const isActive = currentPage === item.page
+            // Fix: Match current page by checking if pathname includes the page route
+            const isActive = currentPage === item.href || currentPage.startsWith(item.href + '/') || currentPage === `/${item.page}`
             return (
               <motion.div
                 key={item.href}
@@ -117,9 +118,9 @@ export default function Sidebar({ currentPage, onNavigate, collapsed = false }: 
               >
                 <Button
                   variant="ghost"
-                  className={`w-full justify-start text-left h-auto p-3 transition-all duration-300 ${
+                  className={`w-full justify-start text-left h-auto p-3 md:p-3 transition-all duration-300 ${
                     isActive 
-                      ? 'bg-gradient-to-r from-blue-500/40 to-purple-500/40 text-white border border-blue-500/60 shadow-lg shadow-blue-500/30 rounded-lg' 
+                      ? 'bg-gradient-to-r from-blue-500/40 to-purple-500/40 text-white border border-blue-500/60 shadow-lg shadow-blue-500/30 rounded-lg font-semibold' 
                       : 'text-gray-300 hover:text-white hover:bg-white/20 rounded-lg'
                   }`}
                   onClick={() => {
@@ -128,15 +129,16 @@ export default function Sidebar({ currentPage, onNavigate, collapsed = false }: 
                     }
                   }}
                 >
-                  <item.icon className={`w-5 h-5 ${collapsed ? '' : 'mr-3'}`} />
-                  {!collapsed && <span className="flex-1">{item.title}</span>}
+                  {/* Fix: Mobile button readability - larger icons and text */}
+                  <item.icon className={`w-5 h-5 md:w-5 md:h-5 ${collapsed ? '' : 'mr-2 md:mr-3'} flex-shrink-0`} />
+                  {!collapsed && <span className="flex-1 text-sm md:text-base font-medium">{item.title}</span>}
                   {!collapsed && item.badge && (
-                    <Badge variant="secondary" className="bg-blue-500/20 text-blue-300 border-0">
+                    <Badge variant="secondary" className="bg-blue-500/20 text-blue-300 border-0 text-xs">
                       {item.badge}
                     </Badge>
                   )}
                   {!collapsed && isActive && (
-                    <ChevronRight className="w-4 h-4 ml-2" />
+                    <ChevronRight className="w-4 h-4 ml-2 flex-shrink-0" />
                   )}
                 </Button>
               </motion.div>
@@ -144,9 +146,10 @@ export default function Sidebar({ currentPage, onNavigate, collapsed = false }: 
           })}
         </nav>
 
+        {/* Fix: Quick Actions - mobile readable buttons */}
         {!collapsed && (
-          <div className="mt-8">
-            <h3 className="text-sm font-medium text-gray-400 mb-3 px-3">Quick Actions</h3>
+          <div className="mt-6 md:mt-8">
+            <h3 className="text-xs md:text-sm font-medium text-gray-400 mb-3 px-3">Quick Actions</h3>
             <div className="space-y-2">
               {quickActions.map((action, index) => (
                 <motion.div
@@ -158,11 +161,11 @@ export default function Sidebar({ currentPage, onNavigate, collapsed = false }: 
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="w-full justify-start text-gray-300 hover:text-white hover:bg-white/10"
+                    className="w-full justify-start text-gray-300 hover:text-white hover:bg-white/10 p-3 md:p-3 text-sm md:text-base min-h-[44px] md:min-h-[40px]"
                     onClick={action.action}
                   >
-                    <action.icon className="w-4 h-4 mr-3" />
-                    {action.title}
+                    <action.icon className="w-5 h-5 md:w-4 md:h-4 mr-2 md:mr-3 flex-shrink-0" />
+                    <span className="font-medium">{action.title}</span>
                   </Button>
                 </motion.div>
               ))}

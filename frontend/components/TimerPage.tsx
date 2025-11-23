@@ -60,43 +60,105 @@ export default function TimerPage({ onNavigate, onLogout: _onLogout }: TimerPage
   const focusTime = TIMER_CONFIG.FOCUS_DURATION
   const breakTime = TIMER_CONFIG.BREAK_DURATION
 
-  // Timer effect - only runs when explicitly started by user
+  // Fix: Timer effect - properly stops after 25 minutes and handles break time
   useEffect(() => {
     let interval: NodeJS.Timeout
 
     if (isRunning && currentTime > 0) {
       interval = setInterval(() => {
-        setCurrentTime((time) => time - 1)
+        setCurrentTime((time) => {
+          const newTime = time - 1
+          // Fix: When timer reaches 0, stop it immediately
+          if (newTime <= 0) {
+            setIsRunning(false)
+            return 0
+          }
+          return newTime
+        })
       }, 1000)
-    } else if (currentTime === 0 && isRunning) {
-      // Only auto-complete if timer was actually running (not just paused)
-      setIsRunning(false)
+    }
+
+    return () => {
+      if (interval) clearInterval(interval)
+    }
+  }, [isRunning, currentTime])
+
+  // Fix: Handle timer completion when it reaches 0 (separate effect to avoid race conditions)
+  useEffect(() => {
+    if (currentTime === 0 && !isRunning) {
       if (mode === "focus") {
+        // Focus session completed - switch to break mode and auto-start break timer
         setSessionsCompleted((prev) => prev + 1)
         setMode("break")
         setCurrentTime(breakTime)
-        // Trigger completion notification only when timer naturally completes
+        
+        // Fix: Show notification for break time
         addNotification({
-          title: 'Focus Session Complete! 🎉',
-          body: 'Great work! Take a 5-minute break to recharge.'
+          title: 'Time for Break! ☕',
+          body: 'Great work! Take a 5-minute break to recharge.',
+          type: 'success'
         })
         
-        // Set break reminder after 5 minutes
-        const timeout = setTimeout(() => {
-          addNotification({
-            title: 'Break\'s Over! ⏰',
-            body: 'Time to get back to work. Start your next focus session.'
-          })
-        }, TIMER_CONFIG.BREAK_REMINDER_DELAY)
-        setBreakReminderTimeout(timeout)
-      } else {
+        // Fix: End the focus session in the database
+        if (currentTimerId) {
+          endFocus(false).catch(console.error)
+        }
+        
+        // Fix: Auto-start break timer after a short delay
+        const breakTimer = setTimeout(() => {
+          setIsRunning(true)
+        }, 1000) // 1 second delay to ensure state updates
+        
+        return () => clearTimeout(breakTimer)
+      } else if (mode === "break") {
+        // Break completed - switch back to focus mode but don't auto-start
         setMode("focus")
         setCurrentTime(focusTime)
+        
+        // Fix: Show notification to start next session
+        addNotification({
+          title: 'Break\'s Over! ⏰',
+          body: 'Time to get back to work. Start your next 25-minute focus session.',
+          type: 'info'
+        })
       }
     }
+  }, [currentTime, isRunning, mode, focusTime, breakTime, addNotification, currentTimerId])
 
-    return () => clearInterval(interval)
-  }, [isRunning, currentTime, mode, focusTime, breakTime, addNotification])
+  // Fix: Handle timer completion when it reaches 0 (separate effect to avoid race conditions)
+  useEffect(() => {
+    if (currentTime === 0 && !isRunning) {
+      if (mode === "focus") {
+        // Focus session completed - switch to break mode
+        setSessionsCompleted((prev) => prev + 1)
+        setMode("break")
+        setCurrentTime(breakTime)
+        
+        // Fix: Show notification for break time
+        addNotification({
+          title: 'Time for Break! ☕',
+          body: 'Great work! Take a 5-minute break to recharge.',
+          type: 'success'
+        })
+        
+        // Fix: End the focus session in the database
+        if (currentTimerId) {
+          endFocus(false).catch(console.error)
+        }
+      } else if (mode === "break") {
+        // Break completed - switch back to focus mode but don't auto-start
+        setMode("focus")
+        setCurrentTime(focusTime)
+        
+        // Fix: Show notification to start next session
+        addNotification({
+          title: 'Break\'s Over! ⏰',
+          body: 'Time to get back to work. Start your next 25-minute focus session.',
+          type: 'info'
+        })
+      }
+    }
+  }, [currentTime, isRunning, mode, focusTime, breakTime, addNotification, currentTimerId])
 
   // Fix: Load team, tasks, and current active focus log using NextAuth session
   useEffect(() => {
@@ -264,23 +326,8 @@ export default function TimerPage({ onNavigate, onLogout: _onLogout }: TimerPage
       setIsRunning(false)
       setCurrentTimerId('')
       
-      // Only send notifications if this is a natural completion (not a pause)
-      if (!isPause) {
-        // Send focus completion notification
-        addNotification({
-          title: 'Focus Session Complete! 🎉',
-          body: 'Great work! Take a 5-minute break to recharge.'
-        })
-        
-        // Set break reminder after 5 minutes
-        const timeout = setTimeout(() => {
-          addNotification({
-            title: 'Break\'s Over! ⏰',
-            body: 'Time to get back to work. Start your next focus session.'
-          })
-        }, TIMER_CONFIG.BREAK_REMINDER_DELAY)
-        setBreakReminderTimeout(timeout)
-      }
+      // Fix: Don't send notifications here - they're handled in the timer completion effect
+      // This function is just for ending the timer in the database
       
       // refresh active timers list
       if (teamId) {
@@ -477,16 +524,16 @@ export default function TimerPage({ onNavigate, onLogout: _onLogout }: TimerPage
                         </div>
                       </div>
 
-                      {/* Fix: Timer Controls - responsive sizing */}
+                      {/* Fix: Timer Controls - mobile readable buttons */}
                       <div className="flex items-center justify-center space-x-3 md:space-x-4">
                         {!isRunning ? (
                           <Button
                             size="lg"
                             onClick={handleStart}
                             disabled={!selectedTask || selectedTask === 'no'}
-                            className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white border-0 px-6 md:px-8 text-sm md:text-base disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white border-0 px-6 md:px-8 py-3 md:py-4 text-base md:text-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed min-h-[48px] md:min-h-[56px]"
                           >
-                            <Play className="w-5 h-5 md:w-6 md:h-6 mr-2" />
+                            <Play className="w-6 h-6 md:w-7 md:h-7 mr-2" />
                             <span className="hidden sm:inline">Start Focus</span>
                             <span className="sm:hidden">Start</span>
                           </Button>
@@ -495,9 +542,9 @@ export default function TimerPage({ onNavigate, onLogout: _onLogout }: TimerPage
                             size="lg"
                             onClick={handlePause}
                             variant="outline"
-                            className="border-white/20 text-white hover:bg-white/10 px-6 md:px-8 text-sm md:text-base"
+                            className="border-white/20 text-white hover:bg-white/10 px-6 md:px-8 py-3 md:py-4 text-base md:text-lg font-semibold min-h-[48px] md:min-h-[56px]"
                           >
-                            <Pause className="w-5 h-5 md:w-6 md:h-6 mr-2" />
+                            <Pause className="w-6 h-6 md:w-7 md:h-7 mr-2" />
                             Pause
                           </Button>
                         )}
@@ -506,9 +553,9 @@ export default function TimerPage({ onNavigate, onLogout: _onLogout }: TimerPage
                           size="lg"
                           variant="outline"
                           onClick={handleReset}
-                          className="border-white/20 text-white hover:bg-white/10"
+                          className="border-white/20 text-white hover:bg-white/10 px-5 md:px-6 py-3 md:py-4 min-h-[48px] md:min-h-[56px]"
                         >
-                          <RotateCcw className="w-6 h-6" />
+                          <RotateCcw className="w-6 h-6 md:w-7 md:h-7" />
                         </Button>
                       </div>
 
