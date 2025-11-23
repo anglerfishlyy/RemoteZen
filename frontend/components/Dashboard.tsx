@@ -116,26 +116,29 @@ export default function Dashboard({ onNavigate, onLogout: _onLogout }: Dashboard
 
   return (
     <>
-      {/* Page Title + CTAs (under the fixed header) */}
-      <div className="px-6 pt-2 pb-4">
-        <div className="flex items-center justify-between">
+      {/* Fix: Page Title + CTAs - responsive layout */}
+      <div className="px-4 md:px-6 pt-2 pb-4">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <motion.h1 
               initial={{ opacity: 0, y: -6 }}
               animate={{ opacity: 1, y: 0 }}
-              className="text-2xl font-bold text-white"
+              className="text-xl md:text-2xl font-bold text-white"
             >
               Welcome back, {myFirstName} 👋
             </motion.h1>
-            <p className="text-gray-400 mt-1">Live view of your team’s tasks and focus.</p>
+            <p className="text-gray-400 mt-1 text-sm md:text-base">Live view of your team's tasks and focus.</p>
           </div>
-          <div className="flex items-center space-x-3">
+          {/* Fix: Buttons - responsive layout */}
+          <div className="flex items-center space-x-2 md:space-x-3">
             <Button 
               onClick={() => onNavigate('tasks')}
-              className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white border-0"
+              size="sm"
+              className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white border-0 text-sm"
             >
-              <Plus className="w-4 h-4 mr-2" />
-              New Task
+              <Plus className="w-4 h-4 mr-1 md:mr-2" />
+              <span className="hidden sm:inline">New Task</span>
+              <span className="sm:hidden">Task</span>
             </Button>
             <Button 
               onClick={() => {
@@ -147,6 +150,7 @@ export default function Dashboard({ onNavigate, onLogout: _onLogout }: Dashboard
                   onNavigate('timer')
                 }
               }}
+              size="sm"
               variant="outline"
               className="border-white/20 text-white hover:bg-white/10"
             >
@@ -192,7 +196,8 @@ export default function Dashboard({ onNavigate, onLogout: _onLogout }: Dashboard
               ))}
             </motion.div>
 
-            <div className="grid lg:grid-cols-3 gap-6">
+            {/* Fix: Responsive grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
               {/* My Tasks */}
               <motion.div 
                 initial={{ opacity: 0, x: -20 }}

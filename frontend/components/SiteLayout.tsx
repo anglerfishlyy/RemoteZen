@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Header from './Header';
 import Sidebar from './Sidebar';
@@ -16,6 +16,22 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
   const pathname = usePathname();
   const router = useRouter();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Fix: Detect mobile screen size and handle sidebar state
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+      if (window.innerWidth >= 768) {
+        setSidebarOpen(false); // Close mobile sidebar when switching to desktop
+      }
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const inShell = useMemo(() => {
     if (!pathname) return false;
@@ -58,12 +74,51 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
             currentPage={pathname || ''}
             onNavigate={handleNavigate}
             onLogout={() => router.push('/login')}
-            onToggleSidebar={() => setSidebarCollapsed(v => !v)}
+            onToggleSidebar={() => {
+              if (isMobile) {
+                setSidebarOpen(v => !v);
+              } else {
+                setSidebarCollapsed(v => !v);
+              }
+            }}
           />
         )}
-        <div className="flex">
-          <Sidebar currentPage={pathname || ''} onNavigate={handleNavigate} collapsed={sidebarCollapsed} />
-          <main className={`flex-1 pt-16 transition-all duration-300 ${sidebarCollapsed ? 'pl-20' : 'pl-64'} pr-6`}>
+        <div className="flex relative">
+          {/* Fix: Mobile sidebar overlay */}
+          {isMobile && sidebarOpen && (
+            <div
+              className="fixed inset-0 bg-black/50 z-40 md:hidden"
+              onClick={() => setSidebarOpen(false)}
+            />
+          )}
+          
+          {/* Fix: Sidebar - hidden on mobile when closed, always visible on desktop */}
+          <div className={`
+            ${isMobile 
+              ? `fixed left-0 top-16 z-50 h-[calc(100vh-4rem)] transform transition-transform duration-300 ${
+                  sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+                }`
+              : 'relative'
+            }
+          `}>
+            <Sidebar 
+              currentPage={pathname || ''} 
+              onNavigate={(page) => {
+                handleNavigate(page);
+                if (isMobile) setSidebarOpen(false); // Close mobile sidebar on navigation
+              }} 
+              collapsed={!isMobile && sidebarCollapsed}
+            />
+          </div>
+          
+          {/* Fix: Main content - responsive padding */}
+          <main className={`
+            flex-1 pt-16 transition-all duration-300
+            ${isMobile 
+              ? 'w-full px-4 pb-6' 
+              : `${sidebarCollapsed ? 'pl-20' : 'pl-64'} pr-6`
+            }
+          `}>
             {children}
           </main>
         </div>

@@ -7,7 +7,6 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import { randomUUID } from "crypto";
 
 type NotificationType = "info" | "success" | "warning" | "error";
 

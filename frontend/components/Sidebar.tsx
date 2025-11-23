@@ -94,8 +94,16 @@ export default function Sidebar({ currentPage, onNavigate, collapsed = false }: 
   }, [user])
 
   return (
-    <aside className={`fixed left-0 top-16 z-40 h-[calc(100vh-4rem)] ${collapsed ? 'w-16' : 'w-64'} bg-black/40 backdrop-blur-xl border-r border-white/30 overflow-y-auto custom-scrollbar transition-all duration-300`}>
-      <div className={`p-6 ${collapsed ? 'px-3' : ''}`}>
+    <aside className={`
+      ${collapsed ? 'w-16' : 'w-64'} 
+      h-[calc(100vh-4rem)] 
+      bg-black/40 backdrop-blur-xl 
+      border-r border-white/30 
+      overflow-y-auto custom-scrollbar 
+      transition-all duration-300
+      ${collapsed ? 'md:fixed' : 'md:fixed'}
+    `}>
+      <div className={`p-4 md:p-6 ${collapsed ? 'px-2 md:px-3' : 'px-4'}`}>
         {/* Navigation */}
         <nav className="space-y-2">
           {navigationItems.map((item, index) => {

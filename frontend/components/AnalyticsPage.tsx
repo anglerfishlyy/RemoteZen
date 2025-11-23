@@ -204,42 +204,44 @@ export default function AnalyticsPage({ onNavigate: _onNavigate, onLogout: _onLo
   }
 
   return (
-    <main className="flex-1 p-8">
+    <main className="flex-1 p-4 md:p-6 lg:p-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
             className="max-w-7xl mx-auto"
           >
-            {/* Header */}
-            <div className="flex justify-between items-center mb-8">
+            {/* Fix: Header - responsive layout */}
+            <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6 md:mb-8">
               <div>
-                <h1 className="text-3xl mb-2 bg-gradient-to-r from-purple-400 to-teal-400 bg-clip-text text-transparent">
+                <h1 className="text-2xl md:text-3xl mb-2 bg-gradient-to-r from-purple-400 to-teal-400 bg-clip-text text-transparent">
                   Analytics Dashboard
                 </h1>
-                <p className="text-gray-400">Track your team&apos;s productivity and performance</p>
+                <p className="text-gray-400 text-sm md:text-base">Track your team&apos;s productivity and performance</p>
               </div>
               
-              <div className="flex items-center space-x-4">
+              {/* Fix: Controls - responsive layout */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-4">
                 <select 
                   value={selectedPeriod}
                   onChange={(e) => setSelectedPeriod(e.target.value)}
-                  className="bg-white/10 backdrop-blur-md border border-white/20 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="bg-white/10 backdrop-blur-md border border-white/20 rounded-lg px-3 md:px-4 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
                 >
                   <option value="7d">Last 7 days</option>
                   <option value="30d">Last 30 days</option>
                   <option value="90d">Last 3 months</option>
                 </select>
                 
-                <button className="bg-gradient-to-r from-purple-500 to-teal-500 px-6 py-2 rounded-lg hover:from-purple-600 hover:to-teal-600 transition-all duration-300 flex items-center space-x-2">
+                <button className="bg-gradient-to-r from-purple-500 to-teal-500 px-4 md:px-6 py-2 rounded-lg hover:from-purple-600 hover:to-teal-600 transition-all duration-300 flex items-center justify-center space-x-2 text-sm md:text-base">
                   <Activity className="w-4 h-4" />
-                  <span>Export Report</span>
+                  <span className="hidden sm:inline">Export Report</span>
+                  <span className="sm:hidden">Export</span>
                 </button>
               </div>
             </div>
 
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {/* Fix: Stats Cards - responsive grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
               {statCards.map((stat, index) => (
                 <motion.div
                   key={stat.title}
@@ -261,7 +263,8 @@ export default function AnalyticsPage({ onNavigate: _onNavigate, onLogout: _onLo
             </div>
 
             {/* Charts Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            {/* Fix: Responsive grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 lg:gap-8 mb-6 md:mb-8">
               {/* Productivity Trend */}
               <motion.div
                 initial={{ opacity: 0, x: -20 }}
@@ -345,7 +348,8 @@ export default function AnalyticsPage({ onNavigate: _onNavigate, onLogout: _onLo
             </div>
 
             {/* Additional Charts */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Fix: Responsive grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 lg:gap-8">
               {/* Weekly Performance */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}

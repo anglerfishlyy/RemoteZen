@@ -73,13 +73,14 @@ export default function Header({ currentPage, onNavigate, onToggleSidebar }: Hea
 
   return (
     <header className="fixed top-0 w-full z-50 bg-black/20 backdrop-blur-xl border-b border-white/10">
-      <div className="container mx-auto px-6 py-4">
+      <div className="container mx-auto px-4 md:px-6 py-3 md:py-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 md:gap-3">
+            {/* Fix: Mobile menu button - always visible */}
             <button
               aria-label="Toggle sidebar"
               onClick={onToggleSidebar}
-              className="w-8 h-8 rounded-md border border-white/10 hover:bg-white/10 cursor-pointer flex items-center justify-center"
+              className="w-8 h-8 rounded-md border border-white/10 hover:bg-white/10 cursor-pointer flex items-center justify-center flex-shrink-0"
             >
               <span className="sr-only">Toggle sidebar</span>
               <div className="space-y-1">
@@ -92,25 +93,26 @@ export default function Header({ currentPage, onNavigate, onToggleSidebar }: Hea
             <Link href="/dashboard" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
               <motion.div
                 whileHover={{ scale: 1.05 }}
-                className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center"
+                className="w-7 h-7 md:w-8 md:h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0"
               >
                <img
       src="/logo.png"
       alt="RemoteZen Logo"
       width={72}
       height={72}
-      
+      className="w-full h-full object-contain"
       aria-hidden="false"
     />
 
               </motion.div>
-              <span className="text-xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
+              <span className="text-lg md:text-xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
                 RemoteZen
               </span>
             </Link>
           </div>
 
-          <nav className="hidden md:flex items-center space-x-1">
+          {/* Fix: Desktop navigation - hidden on mobile */}
+          <nav className="hidden lg:flex items-center space-x-1">
             <Button
               variant="ghost"
               className={`text-white hover:bg-white/10 transition-colors ${
@@ -151,11 +153,14 @@ export default function Header({ currentPage, onNavigate, onToggleSidebar }: Hea
             </Button>
           </nav>
 
-          <div className="flex items-center space-x-4">
-            <Button variant="ghost" size="sm" className="text-white hover:bg-white/10">
+          {/* Fix: Right side actions - responsive spacing and sizing */}
+          <div className="flex items-center space-x-2 md:space-x-4">
+            {/* Fix: Search button - hidden on mobile */}
+            <Button variant="ghost" size="sm" className="hidden md:flex text-white hover:bg-white/10">
               <Search className="w-4 h-4" />
             </Button>
 
+            {/* Fix: Notifications button - always visible */}
             <Button
               variant="ghost"
               size="sm"

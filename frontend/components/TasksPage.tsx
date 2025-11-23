@@ -366,38 +366,40 @@ export default function TasksPage({ onNavigate, onLogout: _onLogout }: TasksPage
           </div>
         </header>
 
-        {/* Filters */}
-        <div className="border-b border-white/10 px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="relative">
+        {/* Fix: Filters - responsive layout */}
+        <div className="border-b border-white/10 px-4 md:px-6 py-3 md:py-4">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-0">
+            <div className="flex flex-wrap items-center gap-2 md:gap-4">
+              <div className="relative flex-1 md:flex-none min-w-[200px]">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <Input
                   placeholder="Search tasks..."
-                  className="pl-10 w-64 bg-white/5 border-white/10 text-white placeholder-gray-400"
+                  className="pl-10 w-full md:w-64 bg-white/5 border-white/10 text-white placeholder-gray-400 text-sm"
                 />
               </div>
-              <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white">
-                <Filter className="w-4 h-4 mr-2" />
-                Filter
+              <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white text-xs md:text-sm">
+                <Filter className="w-4 h-4 mr-1 md:mr-2" />
+                <span className="hidden sm:inline">Filter</span>
               </Button>
-              <Button variant={showMine ? 'default' : 'ghost'} size="sm" onClick={() => setShowMine((v) => !v)} className={showMine ? 'bg-gradient-to-r from-blue-500 to-purple-600' : ''}>
-                {showMine ? 'Showing: My Tasks' : 'Show: My Tasks'}
+              <Button variant={showMine ? 'default' : 'ghost'} size="sm" onClick={() => setShowMine((v) => !v)} className={`text-xs md:text-sm ${showMine ? 'bg-gradient-to-r from-blue-500 to-purple-600' : ''}`}>
+                <span className="hidden md:inline">{showMine ? 'Showing: My Tasks' : 'Show: My Tasks'}</span>
+                <span className="md:hidden">{showMine ? 'My Tasks' : 'All Tasks'}</span>
               </Button>
             </div>
             
-            <div className="flex items-center space-x-2 text-sm text-gray-400">
-              <span>Total: {sourceTasks.length} tasks</span>
-              <span>•</span>
-              <span>Active timers: {activeTimers}</span>
+            {/* Fix: Stats - responsive layout */}
+            <div className="flex items-center space-x-2 text-xs md:text-sm text-gray-400">
+              <span>Total: {sourceTasks.length}</span>
+              <span className="hidden sm:inline">•</span>
+              <span>Timers: {activeTimers}</span>
             </div>
           </div>
         </div>
 
-        {/* Main Content */}
-        <main className="flex-1 overflow-auto p-6">
+        {/* Fix: Main Content - responsive grid */}
+        <main className="flex-1 overflow-auto p-4 md:p-6">
           {viewMode === 'kanban' ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 h-full">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 h-full">
               {columns.map((column) => (
                 <motion.div 
                   key={column.id}

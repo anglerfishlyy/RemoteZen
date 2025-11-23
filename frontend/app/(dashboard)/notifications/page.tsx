@@ -44,24 +44,25 @@ export default function NotificationsPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto py-8">
-      {/* Header */}
-      <div className="px-6 pb-6">
-        <div className="flex items-center justify-between">
+    <div className="max-w-4xl mx-auto py-4 md:py-8">
+      {/* Fix: Header - responsive layout */}
+      <div className="px-4 md:px-6 pb-4 md:pb-6">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <motion.h1 
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="text-2xl font-bold text-white flex items-center"
+              className="text-xl md:text-2xl font-bold text-white flex items-center"
             >
-              <Bell className="w-6 h-6 mr-3" />
+              <Bell className="w-5 h-5 md:w-6 md:h-6 mr-2 md:mr-3" />
               Notifications
             </motion.h1>
-            <p className="text-gray-400 mt-1">
+            <p className="text-gray-400 mt-1 text-sm md:text-base">
               {unreadCount > 0 ? `${unreadCount} unread notifications` : 'All caught up!'}
             </p>
           </div>
-          <div className="flex items-center space-x-3">
+          {/* Fix: Filter buttons - responsive layout */}
+          <div className="flex items-center space-x-2 md:space-x-3">
             <div className="flex bg-white/5 rounded-lg p-1">
               <Button
                 variant={filter === 'all' ? 'default' : 'ghost'}
@@ -100,8 +101,8 @@ export default function NotificationsPage() {
         </div>
       </div>
 
-      {/* Notifications List */}
-      <div className="px-6">
+      {/* Fix: Notifications List - responsive padding */}
+      <div className="px-4 md:px-6">
         {filteredNotifications.length === 0 ? (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -132,27 +133,28 @@ export default function NotificationsPage() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.05 }}
                 >
+                  {/* Fix: Notification card - responsive layout */}
                   <Card className={`bg-black/40 backdrop-blur-xl border-white/10 hover:border-white/20 transition-all duration-300 ${
                     !notification.read ? 'ring-1 ring-blue-500/30' : ''
                   }`}>
-                    <CardContent className="p-6">
-                      <div className="flex items-start space-x-4">
-                        <div className={`w-10 h-10 rounded-full bg-white/5 flex items-center justify-center ${iconColor}`}>
-                          <Icon className="w-5 h-5" />
+                    <CardContent className="p-4 md:p-6">
+                      <div className="flex items-start space-x-3 md:space-x-4">
+                        <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full bg-white/5 flex items-center justify-center flex-shrink-0 ${iconColor}`}>
+                          <Icon className="w-4 h-4 md:w-5 md:h-5" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <h4 className={`text-white font-medium ${!notification.read ? 'font-semibold' : ''}`}>
+                          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <h4 className={`text-white font-medium text-sm md:text-base ${!notification.read ? 'font-semibold' : ''}`}>
                                 {notification.title}
                               </h4>
                               {notification.body && (
-                                <p className="text-gray-400 text-sm mt-1">
+                                <p className="text-gray-400 text-xs md:text-sm mt-1">
                                   {notification.body}
                                 </p>
                               )}
                             </div>
-                            <div className="flex items-center space-x-2 ml-4">
+                            <div className="flex items-center space-x-2 sm:ml-4 flex-shrink-0">
                               {!notification.read && (
                                 <div className="w-2 h-2 bg-blue-500 rounded-full" />
                               )}

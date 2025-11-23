@@ -327,43 +327,46 @@ export default function TimerPage({ onNavigate, onLogout: _onLogout }: TimerPage
 
   return (
     <div className="flex flex-col overflow-hidden">
-        {/* Header */}
-        <header className="bg-black/40 backdrop-blur-xl border-b border-white/10 px-6 py-4">
-          <div className="flex items-center justify-between">
+        {/* Fix: Header - responsive layout */}
+        <header className="bg-black/40 backdrop-blur-xl border-b border-white/10 px-4 md:px-6 py-3 md:py-4">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
               <motion.h1 
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="text-2xl font-bold text-white"
+                className="text-xl md:text-2xl font-bold text-white"
               >
                 Focus Timer
               </motion.h1>
-              <p className="text-gray-400 mt-1">Stay focused and track your productivity with Pomodoro technique.</p>
+              <p className="text-gray-400 mt-1 text-sm md:text-base">Stay focused and track your productivity with Pomodoro technique.</p>
             </div>
             
-            <div className="flex items-center space-x-4">
-              <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white">
-                <Settings className="w-4 h-4 mr-2" />
-                Settings
+            {/* Fix: Buttons - responsive layout */}
+            <div className="flex items-center space-x-2 md:space-x-4">
+              <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white text-xs md:text-sm">
+                <Settings className="w-4 h-4 mr-1 md:mr-2" />
+                <span className="hidden sm:inline">Settings</span>
               </Button>
               <Button 
                 variant="outline"
                 size="sm"
                 onClick={() => onNavigate('tasks')}
-                className="border-white/20 text-white hover:bg-white/10"
+                className="border-white/20 text-white hover:bg-white/10 text-xs md:text-sm"
               >
-                <Plus className="w-4 h-4 mr-2" />
-                New Task
+                <Plus className="w-4 h-4 mr-1 md:mr-2" />
+                <span className="hidden sm:inline">New Task</span>
+                <span className="sm:hidden">Task</span>
               </Button>
             </div>
           </div>
         </header>
 
-        {/* Main Content */}
-        <main className="flex-1 overflow-auto p-6">
-          <div className="max-w-7xl mx-auto grid lg:grid-cols-3 gap-8">
-            {/* Timer Section */}
-            <div className="lg:col-span-2 space-y-6">
+        {/* Fix: Main Content - responsive padding */}
+        <main className="flex-1 overflow-auto p-4 md:p-6">
+          {/* Fix: Responsive grid layout */}
+          <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 lg:gap-8">
+            {/* Fix: Timer Section - responsive spacing */}
+            <div className="lg:col-span-2 space-y-4 md:space-y-6">
               {/* Task Selection */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -429,8 +432,8 @@ export default function TimerPage({ onNavigate, onLogout: _onLogout }: TimerPage
                         </Badge>
                       </div>
 
-                      {/* Circular Timer */}
-                      <div className="relative w-80 h-80 mx-auto mb-8">
+                      {/* Fix: Circular Timer - responsive sizing */}
+                      <div className="relative w-64 h-64 md:w-80 md:h-80 mx-auto mb-6 md:mb-8">
                         <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-full blur-3xl"></div>
                         <div className="relative w-full h-full rounded-full border-8 border-white/10 flex items-center justify-center">
                           <svg className="absolute inset-0 w-full h-full transform -rotate-90" viewBox="0 0 100 100">
@@ -464,36 +467,37 @@ export default function TimerPage({ onNavigate, onLogout: _onLogout }: TimerPage
                           </svg>
                           
                           <div className="text-center">
-                            <div className="text-6xl font-bold text-white mb-2">
+                            <div className="text-4xl md:text-6xl font-bold text-white mb-2">
                               {formatTime(currentTime)}
                             </div>
-                            <div className="text-gray-400">
+                            <div className="text-xs md:text-sm text-gray-400 px-2">
                               {selectedTask ? tasks.find(t => t.id === selectedTask)?.title || 'Custom Focus Session' : 'Focus Session'}
                             </div>
                           </div>
                         </div>
                       </div>
 
-                      {/* Timer Controls */}
-                      <div className="flex items-center justify-center space-x-4">
+                      {/* Fix: Timer Controls - responsive sizing */}
+                      <div className="flex items-center justify-center space-x-3 md:space-x-4">
                         {!isRunning ? (
                           <Button
                             size="lg"
                             onClick={handleStart}
                             disabled={!selectedTask || selectedTask === 'no'}
-                            className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white border-0 px-8 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white border-0 px-6 md:px-8 text-sm md:text-base disabled:opacity-50 disabled:cursor-not-allowed"
                           >
-                            <Play className="w-6 h-6 mr-2" />
-                            Start Focus
+                            <Play className="w-5 h-5 md:w-6 md:h-6 mr-2" />
+                            <span className="hidden sm:inline">Start Focus</span>
+                            <span className="sm:hidden">Start</span>
                           </Button>
                         ) : (
                           <Button
                             size="lg"
                             onClick={handlePause}
                             variant="outline"
-                            className="border-white/20 text-white hover:bg-white/10 px-8"
+                            className="border-white/20 text-white hover:bg-white/10 px-6 md:px-8 text-sm md:text-base"
                           >
-                            <Pause className="w-6 h-6 mr-2" />
+                            <Pause className="w-5 h-5 md:w-6 md:h-6 mr-2" />
                             Pause
                           </Button>
                         )}
@@ -508,21 +512,21 @@ export default function TimerPage({ onNavigate, onLogout: _onLogout }: TimerPage
                         </Button>
                       </div>
 
-                      {/* Session Counter */}
-                      <div className="mt-8 flex items-center justify-center space-x-6 text-gray-400">
+                      {/* Fix: Session Counter - responsive */}
+                      <div className="mt-6 md:mt-8 flex items-center justify-center space-x-4 md:space-x-6 text-gray-400">
                         <div className="text-center">
-                          <div className="text-2xl font-bold text-white">{sessionsCompleted}</div>
-                          <div className="text-sm">Sessions Today</div>
+                          <div className="text-xl md:text-2xl font-bold text-white">{sessionsCompleted}</div>
+                          <div className="text-xs md:text-sm">Sessions Today</div>
                         </div>
-                        <div className="w-px h-8 bg-white/10"></div>
+                        <div className="w-px h-6 md:h-8 bg-white/10"></div>
                         <div className="text-center">
-                          <div className="text-2xl font-bold text-white">25m</div>
-                          <div className="text-sm">Focus Duration</div>
+                          <div className="text-xl md:text-2xl font-bold text-white">25m</div>
+                          <div className="text-xs md:text-sm">Focus Duration</div>
                         </div>
-                        <div className="w-px h-8 bg-white/10"></div>
+                        <div className="w-px h-6 md:h-8 bg-white/10"></div>
                         <div className="text-center">
-                          <div className="text-2xl font-bold text-white">5m</div>
-                          <div className="text-sm">Break Duration</div>
+                          <div className="text-xl md:text-2xl font-bold text-white">5m</div>
+                          <div className="text-xs md:text-sm">Break Duration</div>
                         </div>
                       </div>
                     </div>
@@ -556,50 +560,51 @@ export default function TimerPage({ onNavigate, onLogout: _onLogout }: TimerPage
               </motion.div>
             </div>
 
-            {/* Sidebar */}
-            <div className="space-y-6">
-              {/* Today's Stats */}
+            {/* Fix: Sidebar - responsive spacing */}
+            <div className="space-y-4 md:space-y-6">
+              {/* Fix: Today's Stats - responsive */}
               <motion.div
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.2 }}
               >
                 <Card className="bg-black/40 backdrop-blur-xl border-white/10">
-                  <CardHeader>
-                    <CardTitle className="text-white flex items-center">
-                      <TrendingUp className="w-5 h-5 mr-2" />
+                  <CardHeader className="p-4 md:p-6">
+                    <CardTitle className="text-white flex items-center text-base md:text-lg">
+                      <TrendingUp className="w-4 h-4 md:w-5 md:h-5 mr-2" />
                       Today&rsquo;s Progress
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="p-4 md:p-6 space-y-3 md:space-y-4">
+                    {/* Fix: Stats items - responsive text sizes */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
-                        <Clock className="w-4 h-4 text-blue-400" />
-                        <span className="text-gray-300">Focus Time</span>
+                        <Clock className="w-3 h-3 md:w-4 md:h-4 text-blue-400" />
+                        <span className="text-xs md:text-sm text-gray-300">Focus Time</span>
                       </div>
-                      <span className="text-white font-medium">{todayStats.focusTime}</span>
+                      <span className="text-sm md:text-base text-white font-medium">{todayStats.focusTime}</span>
                     </div>
                     
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
-                        <Timer className="w-4 h-4 text-purple-400" />
-                        <span className="text-gray-300">Sessions</span>
+                        <Timer className="w-3 h-3 md:w-4 md:h-4 text-purple-400" />
+                        <span className="text-xs md:text-sm text-gray-300">Sessions</span>
                       </div>
-                      <span className="text-white font-medium">{todayStats.sessions}</span>
+                      <span className="text-sm md:text-base text-white font-medium">{todayStats.sessions}</span>
                     </div>
                     
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
-                        <CheckSquare className="w-4 h-4 text-green-400" />
-                        <span className="text-gray-300">Completed</span>
+                        <CheckSquare className="w-3 h-3 md:w-4 md:h-4 text-green-400" />
+                        <span className="text-xs md:text-sm text-gray-300">Completed</span>
                       </div>
-                      <span className="text-white font-medium">{todayStats.tasksCompleted}</span>
+                      <span className="text-sm md:text-base text-white font-medium">{todayStats.tasksCompleted}</span>
                     </div>
 
-                    <div className="pt-4 border-t border-white/10">
+                    <div className="pt-3 md:pt-4 border-t border-white/10">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm text-gray-400">Productivity Score</span>
-                        <span className="text-sm font-medium text-white">{todayStats.productivity}%</span>
+                        <span className="text-xs md:text-sm text-gray-400">Productivity Score</span>
+                        <span className="text-xs md:text-sm font-medium text-white">{todayStats.productivity}%</span>
                       </div>
                       <Progress value={todayStats.productivity} className="h-2" />
                     </div>
@@ -623,25 +628,26 @@ export default function TimerPage({ onNavigate, onLogout: _onLogout }: TimerPage
                       See who&rsquo;s currently focused
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  {/* Fix: Active Timers - responsive layout */}
+                  <CardContent className="space-y-3 md:space-y-4 p-4 md:p-6">
                     {activeTimers.map((timer) => (
-                      <div key={timer.id} className="flex items-center space-x-3 p-3 rounded-lg bg-white/5">
-                        <div className="relative">
-                          <Avatar className="w-10 h-10">
-                            <AvatarFallback className="bg-gradient-to-br from-blue-400 to-purple-600 text-white text-sm">
+                      <div key={timer.id} className="flex items-center space-x-2 md:space-x-3 p-2 md:p-3 rounded-lg bg-white/5">
+                        <div className="relative flex-shrink-0">
+                          <Avatar className="w-8 h-8 md:w-10 md:h-10">
+                            <AvatarFallback className="bg-gradient-to-br from-blue-400 to-purple-600 text-white text-xs md:text-sm">
                               {timer.user?.name?.slice(0,2).toUpperCase() || 'U'}
                             </AvatarFallback>
                           </Avatar>
-                          <div className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-black ${
+                          <div className={`absolute -bottom-1 -right-1 w-2 h-2 md:w-3 md:h-3 rounded-full border-2 border-black ${
                             'bg-blue-400'
                           }`} />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-white text-sm font-medium truncate">{timer.user?.name || 'Unknown User'}</p>
+                          <p className="text-white text-xs md:text-sm font-medium truncate">{timer.user?.name || 'Unknown User'}</p>
                           <p className="text-gray-400 text-xs truncate">{timer.task?.title || 'Unknown Task'}</p>
                         </div>
-                        <div className="text-right">
-                          <p className="text-white text-sm font-mono">{formatSince(timer.startedAt)}</p>
+                        <div className="text-right flex-shrink-0">
+                          <p className="text-white text-xs md:text-sm font-mono">{formatSince(timer.startedAt)}</p>
                           <Badge 
                             variant="outline" 
                             className={`text-xs border-blue-500/50 text-blue-400`}

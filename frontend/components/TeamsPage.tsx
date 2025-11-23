@@ -23,64 +23,89 @@ interface Invite { id: string; email: string; role: 'MEMBER'|'MANAGER'|'ADMIN'; 
 
 export default function TeamsPage({ onNavigate }: TeamsPageProps) {
   const { user } = useAuth()
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
   const [teamId, setTeamId] = useState('')
   const [members, setMembers] = useState<TeamMember[]>([])
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole] = useState<'MEMBER' | 'MANAGER' | 'ADMIN'>('MEMBER')
   const [pendingInvites, setPendingInvites] = useState<Invite[]>([])
 
+  // Fix: Use NextAuth session and internal API routes
   useEffect(() => {
-    const token = localStorage.getItem('token')
-    if (!token || !user) return
+    if (!user) return
     const load = async () => {
-      const me = await fetch(`${API_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
-      const data = await me.json()
-      const firstTeam = data.teams?.[0]
-      if (firstTeam) {
-        setTeamId(firstTeam.id)
-        const res = await fetch(`${API_URL}/teams/${firstTeam.id}/members`, { headers: { Authorization: `Bearer ${token}` } })
-        const mem = await res.json()
-        setMembers(mem)
-        const inv = await fetch(`${API_URL}/invites?teamId=${firstTeam.id}`, { headers: { Authorization: `Bearer ${token}` } })
-        const invData = await inv.json()
-        setPendingInvites(Array.isArray(invData) ? invData : [])
+      try {
+        const meRes = await fetch('/api/user/me', { credentials: 'include' })
+        if (!meRes.ok) return
+        const me = await meRes.json()
+        const firstTeam = me?.user?.teams?.[0]?.team
+        if (firstTeam) {
+          setTeamId(firstTeam.id)
+          const res = await fetch(`/api/teams/${firstTeam.id}/members`, { credentials: 'include' })
+          if (res.ok) {
+            const mem = await res.json()
+            setMembers(Array.isArray(mem) ? mem : [])
+          }
+          // Note: Invites endpoint might not exist, handle gracefully
+          try {
+            const inv = await fetch(`/api/teams/${firstTeam.id}/invites`, { credentials: 'include' })
+            if (inv.ok) {
+              const invData = await inv.json()
+              setPendingInvites(Array.isArray(invData) ? invData : [])
+            }
+          } catch {}
+        }
+      } catch (e) {
+        console.error(e)
       }
     }
     load()
-  }, [API_URL, user])
+  }, [user])
 
+  // Fix: Use internal API routes
   const invite = async () => {
-    const token = localStorage.getItem('token')
-    if (!token || !teamId || !inviteEmail) return
-    const res = await fetch(`${API_URL}/invites`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ teamId, email: inviteEmail, role: inviteRole }),
-    })
-    const data = await res.json()
-    if (!res.ok) throw new Error(data?.error || 'Failed to create invite')
-    setInviteEmail('')
-    setInviteRole('MEMBER')
+    if (!teamId || !inviteEmail) return
+    try {
+      const res = await fetch(`/api/teams/${teamId}/invite`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email: inviteEmail, role: inviteRole }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error || 'Failed to create invite')
+      setInviteEmail('')
+      setInviteRole('MEMBER')
+      // Reload invites
+      const inv = await fetch(`/api/teams/${teamId}/invites`, { credentials: 'include' })
+      if (inv.ok) {
+        const invData = await inv.json()
+        setPendingInvites(Array.isArray(invData) ? invData : [])
+      }
+    } catch (error) {
+      console.error('Failed to invite:', error)
+    }
   }
 
   return (
     <div className="flex flex-col overflow-hidden">
-        <header className="bg-black/40 backdrop-blur-xl border-b border-white/10 px-6 py-4">
+        {/* Fix: Header - responsive layout */}
+        <header className="bg-black/40 backdrop-blur-xl border-b border-white/10 px-4 md:px-6 py-3 md:py-4">
           <div className="flex items-center justify-between">
             <div>
-              <motion.h1 initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-2xl font-bold text-white">
+              <motion.h1 initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-xl md:text-2xl font-bold text-white">
                 Team
               </motion.h1>
-              <p className="text-gray-400 mt-1">Manage team members and invitations.</p>
+              <p className="text-gray-400 mt-1 text-sm md:text-base">Manage team members and invitations.</p>
             </div>
           </div>
         </header>
 
-        <main className="flex-1 overflow-auto p-6 space-y-6">
+        {/* Fix: Main content - responsive padding */}
+        <main className="flex-1 overflow-auto p-4 md:p-6 space-y-4 md:space-y-6">
+          {/* Fix: Members card - responsive padding */}
           <Card className="bg-black/40 backdrop-blur-xl border-white/10">
-            <CardContent className="p-6">
-              <h3 className="text-white font-medium mb-4">Members</h3>
+            <CardContent className="p-4 md:p-6">
+              <h3 className="text-white font-medium mb-3 md:mb-4 text-base md:text-lg">Members</h3>
               <div className="space-y-3">
                 {members.length === 0 ? (
                   <div className="text-gray-400">No members found.</div>
@@ -99,10 +124,12 @@ export default function TeamsPage({ onNavigate }: TeamsPageProps) {
             </CardContent>
           </Card>
 
+          {/* Fix: Invite card - responsive padding */}
           <Card className="bg-black/40 backdrop-blur-xl border-white/10">
-            <CardContent className="p-6 space-y-4">
-              <h3 className="text-white font-medium">Invite user</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <CardContent className="p-4 md:p-6 space-y-3 md:space-y-4">
+              <h3 className="text-white font-medium text-base md:text-lg">Invite user</h3>
+              {/* Fix: Responsive grid */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
                 <div>
                   <Label htmlFor="email">Email</Label>
                   <Input id="email" type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} className="bg-white/5 border-white/10 text-white" placeholder="name@company.com" />
@@ -128,9 +155,10 @@ export default function TeamsPage({ onNavigate }: TeamsPageProps) {
             </CardContent>
           </Card>
 
+          {/* Fix: Pending invites card - responsive padding */}
           <Card className="bg-black/40 backdrop-blur-xl border-white/10">
-            <CardContent className="p-6">
-              <h3 className="text-white font-medium mb-4">Pending Invites</h3>
+            <CardContent className="p-4 md:p-6">
+              <h3 className="text-white font-medium mb-3 md:mb-4 text-base md:text-lg">Pending Invites</h3>
               <div className="space-y-3">
                 {pendingInvites.length === 0 ? (
                   <div className="text-gray-400">No pending invites.</div>
