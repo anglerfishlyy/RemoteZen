@@ -64,8 +64,8 @@ function RegisterPageContent() {
       }
 
       if (result?.ok) {
-        router.push('/dashboard')
-        router.refresh()
+        // Fix: Force session refresh to clear any cached data
+        window.location.href = '/dashboard'
       }
     } catch {
       setError('An error occurred. Please try again.')

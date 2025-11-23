@@ -199,9 +199,37 @@ export const authOptions: NextAuthOptions = {
 
     // JWT callback - called when JWT is created or updated
     // Fix: Always fetch fresh user data from database to ensure correct session
-    async jwt({ token, user, account, profile }) {
+    async jwt({ token, user, account, profile, trigger }) {
+      // Fix: Clear token data when updating session to prevent stale data
+      if (trigger === "update") {
+        // When session is updated, refresh user data from database
+        if (token.id) {
+          try {
+            const dbUser = await prisma.user.findUnique({
+              where: { id: token.id as string },
+              select: { id: true, name: true, email: true, role: true },
+            });
+            if (dbUser) {
+              token.id = dbUser.id;
+              token.email = dbUser.email;
+              token.name = dbUser.name;
+              token.role = dbUser.role;
+            }
+          } catch (error) {
+            console.error("Error refreshing user data in JWT callback:", error);
+          }
+        }
+        return token;
+      }
+
       // Initial sign in - account and user are only available on first call
+      // Fix: Clear any existing token data to prevent mixing old and new user data
       if (account && user) {
+        // Clear old token data by setting to empty strings (will be overwritten below)
+        token.id = "";
+        token.email = "";
+        token.name = "";
+        token.role = undefined;
         // Persist the OAuth access_token to the token right after signin
         if (account.access_token) {
           token.accessToken = account.access_token;

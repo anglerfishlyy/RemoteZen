@@ -40,7 +40,6 @@ interface TimeBreakdown {
 
 export default function AnalyticsPage({ onNavigate: _onNavigate, onLogout: _onLogout }: AnalyticsPageProps) {
   const { user } = useAuth()
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
   const [productivityData, setProductivityData] = useState<ProductivityData[]>([]);
   const [taskDistribution, setTaskDistribution] = useState<TaskDistribution[]>([]);
   const [weeklyStats, setWeeklyStats] = useState<WeeklyStats[]>([]);
@@ -48,33 +47,38 @@ export default function AnalyticsPage({ onNavigate: _onNavigate, onLogout: _onLo
   const [loading, setLoading] = useState(true);
   const [selectedPeriod, setSelectedPeriod] = useState('7d');
 
+  // Fix: Use NextAuth session and internal API routes
   useEffect(() => {
+    if (!user) return;
+    
     const fetchAnalytics = async () => {
       try {
         setLoading(true);
-        const token = localStorage.getItem('token')
-        if (!token || !user) return
-        const meRes = await fetch(`${API_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
+        
+        // Get user teams
+        const meRes = await fetch('/api/user/me', { credentials: 'include' })
+        if (!meRes.ok) return
         const me = await meRes.json()
-        const firstTeam = me?.teams?.[0]
+        const firstTeam = me?.user?.teams?.[0]?.team
         if (!firstTeam) return
 
         const now = new Date()
         const rangeDays = selectedPeriod === '90d' ? 90 : selectedPeriod === '30d' ? 30 : 7
         const from = new Date(now.getTime() - rangeDays*24*60*60*1000)
-        const pRes = await fetch(`${API_URL}/analytics/productivity?teamId=${firstTeam.id}&from=${from.toISOString()}&to=${now.toISOString()}`, { headers: { Authorization: `Bearer ${token}` } })
-        const p = await pRes.json()
 
-        // Basic charts: convert productivity totals into chart-friendly shapes
-        const days: ProductivityData[] = Array.from({ length: rangeDays }).map((_, i) => {
-          const d = new Date(from.getTime() + i*24*60*60*1000)
-          return { date: d.toISOString().slice(0,10), focus_time: 0, tasks_completed: 0, productivity_score: 0 }
-        })
-        setProductivityData(days)
+        // Get focus logs for productivity calculation
+        const logsRes = await fetch('/api/focus', { credentials: 'include' })
+        const logs = logsRes.ok ? await logsRes.json() : []
+        const teamLogs = Array.isArray(logs) ? logs.filter((l: any) => {
+          const logDate = new Date(l.startTime)
+          return logDate >= from && logDate <= now
+        }) : []
+        
+        const totalFocusSeconds = teamLogs.reduce((sum: number, l: any) => sum + (l.duration || 0), 0)
 
-        // Task distribution from current tasks
-        const tRes = await fetch(`${API_URL}/tasks?teamId=${firstTeam.id}`, { headers: { Authorization: `Bearer ${token}` } })
-        const tasks = await tRes.json()
+        // Get tasks for distribution
+        const tRes = await fetch(`/api/tasks?teamId=${firstTeam.id}`, { credentials: 'include' })
+        const tasks = tRes.ok ? await tRes.json() : []
         const counts = { DONE: 0, IN_PROGRESS: 0, PENDING: 0 }
         if (Array.isArray(tasks)) {
           for (const t of tasks) {
@@ -83,32 +87,62 @@ export default function AnalyticsPage({ onNavigate: _onNavigate, onLogout: _onLo
             else counts.PENDING++
           }
         }
+        
+        // Calculate productivity data by day
+        const days: ProductivityData[] = Array.from({ length: rangeDays }).map((_, i) => {
+          const d = new Date(from.getTime() + i*24*60*60*1000)
+          const dayLogs = teamLogs.filter((l: any) => {
+            const logDate = new Date(l.startTime)
+            return logDate.toDateString() === d.toDateString()
+          })
+          const daySeconds = dayLogs.reduce((sum: number, l: any) => sum + (l.duration || 0), 0)
+          const dayTasks = tasks.filter((t: any) => {
+            if (!t.updatedAt) return false
+            const taskDate = new Date(t.updatedAt)
+            return taskDate.toDateString() === d.toDateString() && t.status === 'DONE'
+          }).length
+          
+          return {
+            date: d.toISOString().slice(0,10),
+            focus_time: Math.round(daySeconds / 60), // minutes
+            tasks_completed: dayTasks,
+            productivity_score: Math.min(100, Math.round((daySeconds / 3600) * 100))
+          }
+        })
+        setProductivityData(days)
+
         setTaskDistribution([
           { status: 'Completed', count: counts.DONE, color: '#06D6A0' },
           { status: 'In Progress', count: counts.IN_PROGRESS, color: '#118AB2' },
           { status: 'To Do', count: counts.PENDING, color: '#FFD166' },
         ])
 
-        // Weekly bars from productivity average
+        // Weekly stats
+        const teamMembers = me?.user?.teams?.[0]?.team?.members?.length || 1
         setWeeklyStats([
-          { week: 'This Week', team_productivity: Math.min(100, Math.round(((p?.totalFocusSeconds||0)/(7*3600))*100)), individual_productivity: Math.min(100, Math.round(((p?.avgFocusPerUser||0)/3600)*100)) }
+          {
+            week: 'This Week',
+            team_productivity: Math.min(100, Math.round((totalFocusSeconds / (7*3600)) * 100)),
+            individual_productivity: Math.min(100, Math.round((totalFocusSeconds / (teamMembers * 3600)) * 100))
+          }
         ])
+        
         setTimeBreakdown([
-          { category: 'Deep Work', hours: Math.round((p?.totalFocusSeconds||0)/3600), color: '#8B5CF6' },
+          { category: 'Deep Work', hours: Math.round(totalFocusSeconds / 3600), color: '#8B5CF6' },
           { category: 'Other', hours: 0, color: '#06D6A0' }
         ])
 
         // Update stats with real data
-        const totalHours = Math.round((p?.totalFocusSeconds || 0) / 3600)
+        const totalHours = Math.round(totalFocusSeconds / 3600)
         const hours = Math.floor(totalHours)
-        const minutes = Math.round(((p?.totalFocusSeconds || 0) % 3600) / 60)
+        const minutes = Math.round((totalFocusSeconds % 3600) / 60)
         const focusTimeStr = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`
         
         setStats({
           totalFocusTime: focusTimeStr,
-          tasksCompleted: p?.tasksCompleted || 0,
-          productivityScore: Math.min(100, Math.round(((p?.totalFocusSeconds || 0) / (7 * 3600)) * 100)),
-          teamMembers: me?.teams?.[0]?.members?.length || 1
+          tasksCompleted: counts.DONE,
+          productivityScore: Math.min(100, Math.round((totalFocusSeconds / (7 * 3600)) * 100)),
+          teamMembers: teamMembers
         })
       } catch (error) {
         console.error('Failed to fetch analytics:', error);
@@ -117,7 +151,7 @@ export default function AnalyticsPage({ onNavigate: _onNavigate, onLogout: _onLo
       }
     }
     fetchAnalytics()
-  }, [selectedPeriod, API_URL, user])
+  }, [selectedPeriod, user])
 
   // Dynamic stats based on real data
   const [stats, setStats] = useState({

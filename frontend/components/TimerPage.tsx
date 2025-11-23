@@ -39,7 +39,6 @@ interface TimerPageProps {
 export default function TimerPage({ onNavigate, onLogout: _onLogout }: TimerPageProps) {
   const { user } = useAuth()
   const { addNotification } = useNotifications()
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
 
   type ApiTask = { id: string; title: string }
   type FocusLog = { id: string; startTime: string; endTime?: string | null; duration?: number | null }
@@ -99,57 +98,62 @@ export default function TimerPage({ onNavigate, onLogout: _onLogout }: TimerPage
     return () => clearInterval(interval)
   }, [isRunning, currentTime, mode, focusTime, breakTime, addNotification])
 
-  // Load team, tasks, and current active focus log
+  // Fix: Load team, tasks, and current active focus log using NextAuth session
   useEffect(() => {
-    const token = localStorage.getItem('token')
-    if (!token || !user) return
+    if (!user) return
     const load = async () => {
       try {
-        const me = await fetch(`${API_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
-        const data = (await me.json()) as { teams?: Array<{ id: string }> }
-        const firstTeam = data.teams?.[0]
+        // Get user teams
+        const meRes = await fetch('/api/user/me', { credentials: 'include' })
+        if (!meRes.ok) return
+        const me = await meRes.json()
+        const firstTeam = me?.user?.teams?.[0]?.team
         if (firstTeam) {
           setTeamId(firstTeam.id)
-          const taskRes = await fetch(`${API_URL}/tasks?teamId=${firstTeam.id}`, { headers: { Authorization: `Bearer ${token}` } })
-          const taskData = (await taskRes.json()) as unknown
-          const list = Array.isArray(taskData) ? (taskData as Array<Partial<ApiTask>>) : []
-          setTasks(list.filter((t): t is ApiTask => Boolean(t?.id && t?.title)).map((t) => ({ id: t.id!, title: t.title! })))
+          // Get tasks
+          const taskRes = await fetch(`/api/tasks?teamId=${firstTeam.id}`, { credentials: 'include' })
+          if (taskRes.ok) {
+            const taskData = await taskRes.json()
+            const list = Array.isArray(taskData) ? taskData : []
+            setTasks(list.filter((t): t is ApiTask => Boolean(t?.id && t?.title)).map((t) => ({ id: t.id!, title: t.title! })))
+          }
         }
 
-        const logsRes = await fetch(`${API_URL}/focus`, { headers: { Authorization: `Bearer ${token}` } })
-        const logsRaw = (await logsRes.json()) as unknown
-        const logs: Array<FocusLog> = Array.isArray(logsRaw)
-          ? (logsRaw as Array<Partial<FocusLog>>).filter((l): l is FocusLog => typeof l?.id === 'string' && typeof l?.startTime === 'string')
-          : []
-        const active = logs.find((l) => !l.endTime)
-        if (active) {
-          setActiveLogId(active.id)
-          // Don't auto-start the timer - let user manually start it
-          // setIsRunning(true)
-        }
+        // Get focus logs
+        const logsRes = await fetch('/api/focus', { credentials: 'include' })
+        if (logsRes.ok) {
+          const logsRaw = await logsRes.json()
+          const logs: Array<FocusLog> = Array.isArray(logsRaw)
+            ? (logsRaw as Array<Partial<FocusLog>>).filter((l): l is FocusLog => typeof l?.id === 'string' && typeof l?.startTime === 'string')
+            : []
+          const active = logs.find((l) => !l.endTime)
+          if (active) {
+            setActiveLogId(active.id)
+          }
 
-        const today = new Date().toDateString()
-        const todayLogs = logs.filter((l) => new Date(l.startTime).toDateString() === today)
-        const totalSec = todayLogs.reduce((acc: number, l) => acc + (l.duration || 0), 0)
-        const hours = Math.floor(totalSec / 3600)
-        const mins = Math.floor((totalSec % 3600) / 60)
-        setTodayStats({ focusTime: `${hours > 0 ? hours + 'h ' : ''}${mins}m`, sessions: todayLogs.length, tasksCompleted: 0, productivity: Math.min(100, Math.round((totalSec / (4 * 3600)) * 100)) })
+          const today = new Date().toDateString()
+          const todayLogs = logs.filter((l) => new Date(l.startTime).toDateString() === today)
+          const totalSec = todayLogs.reduce((acc: number, l) => acc + (l.duration || 0), 0)
+          const hours = Math.floor(totalSec / 3600)
+          const mins = Math.floor((totalSec % 3600) / 60)
+          setTodayStats({ focusTime: `${hours > 0 ? hours + 'h ' : ''}${mins}m`, sessions: todayLogs.length, tasksCompleted: 0, productivity: Math.min(100, Math.round((totalSec / (4 * 3600)) * 100)) })
+        }
       } catch (e) {
         console.error(e)
       }
     }
     load()
-  }, [API_URL, user])
+  }, [user])
 
-  // Fetch active timers for team and keep in sync; also detect my active timer
+  // Fix: Fetch active timers for team using NextAuth session
   useEffect(() => {
-    const token = localStorage.getItem('token')
-    if (!token || !teamId) return
+    if (!teamId || !user) return
     const fetchActive = async () => {
       try {
-        const res = await fetch(`${API_URL}/focus/active?teamId=${teamId}`, { headers: { Authorization: `Bearer ${token}` } })
-        const data = (await res.json()) as unknown
-        const listRaw: Array<unknown> = Array.isArray(data) ? data as Array<unknown> : []
+        const res = await fetch(`/api/focus/active?teamId=${teamId}`, { credentials: 'include' })
+        if (!res.ok) return
+        const data = await res.json()
+        const listRaw: Array<unknown> = Array.isArray(data) ? data : []
         const list: ActiveTimer[] = listRaw.filter((t: unknown): t is ActiveTimer => {
           if (typeof t !== 'object' || t === null) return false
           const v = t as { id?: unknown; startedAt?: unknown; user?: unknown; task?: unknown }
@@ -165,8 +169,6 @@ export default function TimerPage({ onNavigate, onLogout: _onLogout }: TimerPage
         setActiveTimers(list)
         const mine = list.find((t) => t.user.id === user?.id)
         if (mine) {
-          // Don't auto-start the timer - let user manually start it
-          // setIsRunning(true)
           setCurrentTimerId(mine.id)
         }
       } catch (e) { console.error(e) }
@@ -174,7 +176,7 @@ export default function TimerPage({ onNavigate, onLogout: _onLogout }: TimerPage
     fetchActive()
     const interval = setInterval(fetchActive, 10000)
     return () => clearInterval(interval)
-  }, [API_URL, teamId, user?.id])
+  }, [teamId, user])
 
   // Cleanup break reminder timeout on unmount
   useEffect(() => {
@@ -196,9 +198,9 @@ export default function TimerPage({ onNavigate, onLogout: _onLogout }: TimerPage
     return ((totalTime - currentTime) / totalTime) * 100
   }
 
+  // Fix: Use internal API routes with NextAuth session
   const startFocus = async () => {
-    const token = localStorage.getItem('token')
-    if (!token) return
+    if (!user) return
     try {
       if (!selectedTask || selectedTask === 'no') {
         addNotification({
@@ -207,19 +209,26 @@ export default function TimerPage({ onNavigate, onLogout: _onLogout }: TimerPage
         })
         return
       }
-      const res = await fetch(`${API_URL}/focus/start`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ taskId: selectedTask }) })
-      const data = (await res.json()) as { id: string } | { error: string }
-      if (!res.ok) throw new Error((data as { error?: string }).error || 'Failed to start focus')
-      if ('id' in data) {
+      const res = await fetch('/api/focus/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ taskId: selectedTask })
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error || 'Failed to start focus')
+      if (data?.id) {
         setCurrentTimerId(data.id)
       }
       setIsRunning(true)
       // refresh active timers list
       if (teamId) {
         try {
-          const res2 = await fetch(`${API_URL}/focus/active?teamId=${teamId}`, { headers: { Authorization: `Bearer ${token}` } })
-          const list = (await res2.json()) as unknown
-          setActiveTimers(Array.isArray(list) ? (list as ActiveTimer[]) : [])
+          const res2 = await fetch(`/api/focus/active?teamId=${teamId}`, { credentials: 'include' })
+          if (res2.ok) {
+            const list = await res2.json()
+            setActiveTimers(Array.isArray(list) ? list : [])
+          }
         } catch {}
       }
     } catch (e) { 
@@ -231,16 +240,21 @@ export default function TimerPage({ onNavigate, onLogout: _onLogout }: TimerPage
     }
   }
 
+  // Fix: Use internal API routes with NextAuth session
   const endFocus = async (isPause = false) => {
-    const token = localStorage.getItem('token')
-    if (!token) return
+    if (!user) return
     try {
       const body: Record<string, string> = currentTimerId ? { timerId: currentTimerId } : {}
-      const res = await fetch(`${API_URL}/focus/end`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(body) })
+      const res = await fetch('/api/focus/end', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(body)
+      })
       const data = await res.json()
       if (!res.ok) {
         // If no active timer found, just stop the UI timer gracefully
-        if (data?.error?.includes('Active timer not found')) {
+        if (data?.error?.includes('Active timer not found') || data?.error?.includes('Timer not found')) {
           setIsRunning(false)
           setCurrentTimerId('')
           return
@@ -271,7 +285,7 @@ export default function TimerPage({ onNavigate, onLogout: _onLogout }: TimerPage
       // refresh active timers list
       if (teamId) {
         try {
-          const res2 = await fetch(`${API_URL}/focus/active?teamId=${teamId}`, { headers: { Authorization: `Bearer ${token}` } })
+          const res2 = await fetch(`/api/focus/active?teamId=${teamId}`, { credentials: 'include' })
           const list = (await res2.json()) as unknown
           setActiveTimers(Array.isArray(list) ? (list as ActiveTimer[]) : [])
         } catch {}
