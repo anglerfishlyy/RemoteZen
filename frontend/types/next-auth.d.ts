@@ -26,6 +26,8 @@ declare module "next-auth/jwt" {
     email: string
     name: string
     role?: string
+    accessToken?: string // Fix: Added for OAuth access tokens
+    refreshToken?: string // Fix: Added for OAuth refresh tokens (offline access)
   }
 }
 

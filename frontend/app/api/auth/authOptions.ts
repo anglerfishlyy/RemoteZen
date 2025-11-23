@@ -4,17 +4,47 @@ import GitHubProvider from "next-auth/providers/github";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
-import { randomUUID } from "crypto";
 import bcrypt from "bcryptjs";
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
-  session: { strategy: "jwt" },
+  session: { 
+    strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
+
+  // Cookie configuration for both localhost and production (Vercel)
+  // Fix: Ensures cookies work correctly in all environments
+  cookies: {
+    sessionToken: {
+      name: `${process.env.NODE_ENV === "production" ? "__Secure-" : ""}next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production", // Only secure in production (HTTPS)
+      },
+    },
+  },
 
   providers: [
+    // Google OAuth Provider with proper configuration
+    // Fix: Added prompt, access_type, and PKCE support for better OAuth flow
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      authorization: {
+        params: {
+          // Force consent screen to ensure refresh tokens are granted
+          prompt: "consent",
+          // Request offline access to get refresh tokens
+          access_type: "offline",
+          // Use authorization code flow (required for PKCE)
+          response_type: "code",
+        },
+      },
+      // PKCE is automatically enabled by NextAuth.js v4, but we ensure it's working
+      checks: ["pkce", "state"],
     }),
 
     GitHubProvider({
@@ -31,8 +61,9 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         if (!credentials?.email || !credentials.password) return null;
 
+        const email = credentials.email.toLowerCase().trim();
         const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
+          where: { email },
         });
 
         if (!user || !user.passwordHash) return null;
@@ -55,30 +86,201 @@ export const authOptions: NextAuthOptions = {
   ],
 
   callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
+    // Sign in callback - control if a user is allowed to sign in
+    async signIn({ user, account, profile }) {
+      // For OAuth providers, ensure user exists and account is linked
+      if (account && account.provider !== "credentials") {
+        try {
+          const email = user.email?.toLowerCase().trim();
+          if (!email) {
+            console.error("OAuth provider did not return an email");
+            return false;
+          }
+
+          // Get profile data safely
+          const profileData = profile as any;
+          const profileName = profileData?.name || profileData?.login || user.name || null;
+          const profileImage = profileData?.picture || profileData?.avatar_url || user.image || null;
+
+          // Ensure user exists (upsert to avoid conflicts)
+          const dbUser = await prisma.user.upsert({
+            where: { email },
+            update: {
+              name: user.name ?? profileName ?? undefined,
+              image: user.image ?? profileImage ?? undefined,
+              emailVerified: (user as any).emailVerified ?? new Date(),
+            },
+            create: {
+              name: user.name ?? profileName ?? email.split("@")[0],
+              email: email,
+              emailVerified: new Date(),
+              image: user.image ?? profileImage ?? null,
+            },
+          });
+
+          // Update user.id so JWT callback gets the correct ID
+          user.id = dbUser.id;
+
+          // Manually link account (PrismaAdapter handles this with database sessions, but with JWT we need to do it)
+          if (account.providerAccountId) {
+            await prisma.account.upsert({
+              where: {
+                provider_providerAccountId: {
+                  provider: account.provider,
+                  providerAccountId: account.providerAccountId,
+                },
+              },
+              update: {
+                access_token: account.access_token ?? undefined,
+                refresh_token: account.refresh_token ?? undefined,
+                expires_at: account.expires_at ?? undefined,
+                token_type: account.token_type ?? undefined,
+                scope: account.scope ?? undefined,
+                id_token: account.id_token ?? undefined,
+              },
+              create: {
+                userId: dbUser.id,
+                type: account.type,
+                provider: account.provider,
+                providerAccountId: account.providerAccountId,
+                access_token: account.access_token ?? null,
+                refresh_token: account.refresh_token ?? null,
+                expires_at: account.expires_at ?? null,
+                token_type: account.token_type ?? null,
+                scope: account.scope ?? null,
+                id_token: account.id_token ?? null,
+              },
+            });
+          }
+
+          return true;
+        } catch (err) {
+          // Fix: Better error logging for OAuth callback debugging
+          console.error("Error in signIn callback (OAuth):", {
+            error: err,
+            provider: account.provider,
+            email: user.email,
+            hasAccountId: !!account.providerAccountId,
+          });
+          return false;
+        }
+      }
+
+      // Allow credentials login (already validated in authorize)
+      return true;
+    },
+
+    // JWT callback - called when JWT is created or updated
+    // Fix: Properly handle OAuth account data and ensure user data is persisted
+    async jwt({ token, user, account, profile }) {
+      // Initial sign in - account and user are only available on first call
+      // Fix: Check for account first to detect OAuth sign-in
+      if (account && user) {
+        // Persist the OAuth access_token to the token right after signin
+        if (account.access_token) {
+          token.accessToken = account.access_token;
+        }
+        
+        // Store refresh token if available (for offline access)
+        if (account.refresh_token) {
+          token.refreshToken = account.refresh_token;
+        }
+
+        // Persist user id - user.id is set in signIn callback for OAuth
+        if (user.id) {
+          token.id = user.id;
+          token.email = user.email ?? "";
+          token.name = user.name ?? "";
+          token.role = (user as any).role;
+        }
+      }
+      // For credentials provider, user object is available without account
+      else if (user) {
         token.id = user.id;
         token.email = user.email ?? "";
         token.name = user.name ?? "";
         token.role = (user as any).role;
-        token.accessToken = crypto.randomUUID();
       }
+
+      // Fallback: If token doesn't have user data but has email, fetch from database
+      // Fix: This ensures token is always populated even if callbacks fail
+      if (!token.id && token.email) {
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: { email: token.email as string },
+            select: { id: true, name: true, email: true, role: true },
+          });
+          if (dbUser) {
+            token.id = dbUser.id;
+            token.name = dbUser.name;
+            token.email = dbUser.email;
+            token.role = dbUser.role;
+          }
+        } catch (error) {
+          console.error("Error fetching user in JWT callback:", error);
+        }
+      }
+
       return token;
     },
 
+    // Session callback - called whenever a session is checked
     async session({ session, token }) {
-      if (session.user) {
+      // Send properties to the client, like access_token and user id from the token
+      if (session.user && token) {
         session.user.id = token.id as string;
         session.user.email = (token.email as string) ?? "";
         session.user.name = (token.name as string) ?? "";
         (session.user as any).role = token.role;
       }
+      
+      // Expose accessToken to client
       (session as any).accessToken = token.accessToken;
+      
       return session;
     },
 
-    async redirect() {
-      return "/dashboard";
+    // Redirect callback - called anytime the user is redirected to a callback URL
+    // Fix: Properly handle callbackUrl parameter and ensure secure redirects
+    async redirect({ url, baseUrl }) {
+      // Use NEXTAUTH_URL if available, otherwise use baseUrl
+      // Fix: Ensures correct base URL for OAuth callbacks on Vercel
+      const siteUrl = process.env.NEXTAUTH_URL || baseUrl;
+      
+      // Handle callbackUrl from OAuth providers
+      if (url.includes("callbackUrl=")) {
+        try {
+          const urlObj = new URL(url, siteUrl);
+          const callbackUrl = urlObj.searchParams.get("callbackUrl");
+          if (callbackUrl) {
+            const decoded = decodeURIComponent(callbackUrl);
+            // Only allow relative paths for security
+            if (decoded.startsWith("/") && !decoded.startsWith("//")) {
+              return `${siteUrl}${decoded}`;
+            }
+          }
+        } catch (error) {
+          console.error("Error parsing callbackUrl:", error);
+        }
+      }
+
+      // Allows relative callback URLs (e.g., /dashboard)
+      if (url.startsWith("/")) {
+        return `${siteUrl}${url}`;
+      }
+      
+      // Allows callback URLs on the same origin
+      try {
+        const urlObj = new URL(url);
+        if (urlObj.origin === new URL(siteUrl).origin) {
+          return url;
+        }
+      } catch (error) {
+        // Invalid URL, fall through to default
+      }
+      
+      // Default redirect to dashboard
+      return `${siteUrl}/dashboard`;
     },
   },
 
@@ -87,5 +289,47 @@ export const authOptions: NextAuthOptions = {
     error: "/login",
   },
 
-  secret: process.env.NEXTAUTH_SECRET,
+  // Secret for JWT encryption - required for production
+  // Fix: Use AUTH_SECRET as fallback (Vercel convention)
+  secret: process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET,
+  
+  // Debug mode for development
+  debug: process.env.NODE_ENV === "development",
+  
+  // Note: For Vercel deployment, ensure NEXTAUTH_URL is set to your production URL
+  // Example: NEXTAUTH_URL=https://your-app.vercel.app
+  // NextAuth will automatically detect the host in most cases, but explicit URL helps with OAuth callbacks
+
+  // Events for debugging OAuth flow
+  // Fix: Log OAuth events to help diagnose callback issues
+  events: {
+    async signIn({ user, account, isNewUser }) {
+      if (account && account.provider !== "credentials") {
+        console.log(`[NextAuth] OAuth sign-in:`, {
+          provider: account.provider,
+          email: user.email,
+          isNewUser,
+          userId: user.id,
+        });
+      }
+    },
+    async createUser({ user }) {
+      console.log(`[NextAuth] User created:`, {
+        email: user.email,
+        id: user.id,
+      });
+    },
+    async linkAccount({ user, account }) {
+      console.log(`[NextAuth] Account linked:`, {
+        provider: account.provider,
+        userId: user.id,
+      });
+    },
+    async session({ session, token }) {
+      // Optional: Log session creation for debugging
+      if (process.env.NODE_ENV === "development") {
+        console.log(`[NextAuth] Session created for:`, session.user?.email);
+      }
+    },
+  },
 };
